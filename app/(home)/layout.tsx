@@ -4,9 +4,9 @@ import Footer from "../components/common/footer";
 
 export default function HomeLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="flex min-h-screen flex-col bg-gradient-radial-primary text-neutral-300">
+        <div className="flex min-h-screen flex-col text-neutral-300 bg-neutral-950">
             <Header />
-            <main className="flex-1 w-full max-w-6xl mx-auto py-10 px-3 sm:px-6">
+            <main className="flex-1 w-full">
                 {children}
             </main>
             <Footer />

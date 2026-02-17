@@ -1,5 +1,5 @@
 "use client";
-
+import "../../globals.css";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
