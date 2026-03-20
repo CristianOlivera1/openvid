@@ -98,7 +98,7 @@ export default function InteractiveRecordingSteps() {
           <div className="bg-[#1E1E20] border border-white/10 rounded-full px-5 py-3 flex items-center gap-6 shadow-2xl z-10">
             <div className="flex items-center gap-3">
               <Icon icon="logos:chrome" className="text-xl" />
-              <span className="text-sm text-neutral-200">app.freeshot.com está compartiendo tu pantalla.</span>
+              <span className="text-sm text-neutral-200">app.openvid.com está compartiendo tu pantalla.</span>
             </div>
             <div className="flex gap-4 border-l border-white/10 pl-4">
               <span className="text-sm text-blue-400 font-medium cursor-pointer hover:text-blue-300">Dejar de compartir</span>

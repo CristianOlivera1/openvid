@@ -19,11 +19,10 @@ export function OptionsGrid({ selectedIndex = -1, onSelect }: WallpaperGridProps
             <button
                 onClick={() => onSelect?.(-1)}
                 title="Sin fondo"
-                className={`aspect-square squircle-element cursor-pointer transition-all flex items-center justify-center relative overflow-hidden ${
-                    selectedIndex === -1
+                className={`aspect-square squircle-element cursor-pointer transition-all flex items-center justify-center relative overflow-hidden ${selectedIndex === -1
                         ? "ring-2 ring-white/90 shadow-lg shadow-black/40"
                         : "hover:ring-2 ring-white/60"
-                }`}
+                    }`}
                 style={{
                     backgroundImage:
                         "linear-gradient(45deg,#444 25%,transparent 25%),linear-gradient(-45deg,#444 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#444 75%),linear-gradient(-45deg,transparent 75%,#444 75%)",
@@ -58,11 +57,10 @@ function WallpaperThumb({
     return (
         <button
             onClick={() => onSelect?.(item.index)}
-            className={`aspect-square squircle-element cursor-pointer transition-all bg-cover bg-center border border-white/10  ${
-                isSelected
+            className={`aspect-square squircle-element cursor-pointer transition-all bg-cover bg-center border border-white/10  ${isSelected
                     ? "ring-2 ring-white/90 border-white/40 shadow-md shadow-black/50"
                     : "border-white/10 hover:border-white/30 hover:ring-1 ring-white/20"
-            }`}
+                }`}
             style={{ backgroundImage: `url('${item.previewUrl}')` }}
         />
     );
@@ -86,7 +84,11 @@ function CategoryPopover({
                     className="aspect-square rounded-lg border border-white/10 bg-white/5 flex items-center justify-center hover:bg-white/10 transition group"
                     title={`Ver más de ${category.label}`}
                 >
-                    <Icon icon="lucide:plus" className="text-white/60 group-hover:text-white" width="14" />
+                    <Icon
+                        icon="ph:plus-bold"
+                        width="16"
+                        className="text-blue-400 group-hover:text-blue-300 transition-colors"
+                    />
                 </button>
             </PopoverTrigger>
 
@@ -113,11 +115,10 @@ function CategoryPopover({
                                 key={item.index}
                                 onClick={() => { onSelect?.(item.index); setOpen(false); }}
                                 title={item.filename}
-                                className={`aspect-square rounded-lg cursor-pointer transition-all bg-cover bg-center border ${
-                                    selectedIndex === item.index
+                                className={`aspect-square rounded-lg cursor-pointer transition-all bg-cover bg-center border ${selectedIndex === item.index
                                         ? "ring-2 ring-white/90 border-white/40 shadow-md shadow-black/50"
                                         : "border-white/10 hover:border-white/30 hover:ring-1 ring-white/20"
-                                }`}
+                                    }`}
                                 style={{ backgroundImage: `url('${item.previewUrl}')` }}
                             />
                         ))}

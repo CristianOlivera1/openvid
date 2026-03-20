@@ -11,14 +11,6 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 10;
 const ZOOM_STEP = 1;
 
-// ─── Keyboard shortcuts ───────────────────────────────────────────────────────
-//  Space / K      → play / pause
-//  ArrowLeft / J  → skip backward 5s
-//  ArrowRight / L → skip forward 5s
-//  ArrowUp        → zoom in timeline
-//  ArrowDown      → zoom out timeline
-//  F              → toggle fullscreen
-
 export function PlayerControls({
     isPlaying,
     currentTime,

@@ -119,7 +119,7 @@ export function VSCodeMockup({
                             className="truncate"
                             style={{ fontSize: `${searchFontSize}px`, color: textColor }}
                         >
-                            {url || "freeshot"}
+                            {url || "openvid"}
                         </span>
                     </div>
                 </div>

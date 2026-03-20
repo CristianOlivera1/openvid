@@ -48,7 +48,7 @@ export interface MockupRenderProps {
 export const DEFAULT_MOCKUP_CONFIG: MockupConfig = {
     darkMode: false,
     frameColor: "#f6f6f6",
-    url: "https://freeshot.dev",
+    url: "https://openvid.dev",
     headerScale: 60,        // 100% = tamaño normal
     headerOpacity: 100,     // 100% = totalmente opaco
     cornerRadius: 12,

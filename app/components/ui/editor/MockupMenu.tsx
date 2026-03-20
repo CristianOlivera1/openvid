@@ -278,7 +278,7 @@ export function MockupMenu({
                             type="text"
                             value={mockupConfig?.url || ""}
                             onChange={(e) => handleUrlChange(e.target.value)}
-                            placeholder="https://freeshot.dev"
+                            placeholder="https://openvid.dev"
                             className="flex-1 bg-transparent text-[11px] text-white/70 placeholder:text-white/20 outline-none font-mono"
                         />
                     </div>

@@ -26,7 +26,7 @@ export default function Login() {
 
         <div className="w-full max-w-sm mx-auto mt-16 lg:mt-0">
           <div className="mb-10">
-            <Image src="/svg/logo-freeshot.svg" alt="Logo" width={60} height={60} className="mb-4" />
+            <Image src="/svg/logo-openvid.svg" alt="Logo" width={60} height={60} className="mb-4" />
             <h1 className="text-3xl sm:text-4xl font-light tracking-tighter text-white mb-3">
               Bienvenido
             </h1>

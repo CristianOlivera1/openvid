@@ -7,13 +7,13 @@ import { SVG_CATEGORIES, IMAGE_CATEGORIES, PINNED_SVG_ITEMS, PINNED_IMAGE_ITEMS 
 import type { SvgElement, TextElement, ImageElement, CanvasElement } from "@/types/canvas-elements.types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 interface ElementsMenuProps {
     onAddElement: (element: CanvasElement) => void;
     selectedElement?: CanvasElement | null;
     onUpdateElement?: (id: string, updates: Partial<CanvasElement>) => void;
     onDeleteElement?: (id: string) => void;
-    onDuplicateElement?: (id: string) => void;
     onBringToFront?: (id: string) => void;
     onSendToBack?: (id: string) => void;
 }
@@ -44,7 +44,6 @@ export function ElementsMenu({
     selectedElement,
     onUpdateElement,
     onDeleteElement,
-    onDuplicateElement,
     onBringToFront,
     onSendToBack
 }: ElementsMenuProps) {
@@ -245,7 +244,7 @@ export function ElementsMenu({
                         <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">
                             Figuras
                         </div>
-                        <div className="grid grid-cols-6 gap-1.5">
+                        <div className="grid grid-cols-6 gap-2">
                             {/* 11 elementos destacados */}
                             {PINNED_SVG_ITEMS.map((item) => (
                                 <button
@@ -266,12 +265,12 @@ export function ElementsMenu({
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <button
-                                        className="aspect-square bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/40 hover:border-blue-500/60 squircle-element flex items-center justify-center transition-all active:scale-90 group"
+                                        className="aspect-square squircle-element border border-dashed border-white/30 bg-white/5 flex items-center justify-center hover:bg-white/10 transition group"
                                         title="Ver todas las figuras"
                                     >
                                         <Icon
                                             icon="ph:plus-bold"
-                                            width="20"
+                                            width="16"
                                             className="text-blue-400 group-hover:text-blue-300 transition-colors"
                                         />
                                     </button>
@@ -281,9 +280,9 @@ export function ElementsMenu({
                                     side="right"
                                     align="start"
                                     sideOffset={12}
-                                    className="w-[400px] p-0 border-0 shadow-2xl"
+                                    className="w-100 p-0 border-0 shadow-2xl"
                                 >
-                                    <div className="flex flex-col bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl max-h-[500px]">
+                                    <div className="flex flex-col bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl max-h-125">
                                         {/* Header con categorías */}
                                         <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-white/2 flex-wrap">
                                             <button
@@ -367,24 +366,23 @@ export function ElementsMenu({
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <button
-                                        className="aspect-square bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/40 hover:border-blue-500/60 squircle-element flex items-center justify-center transition-all active:scale-90 group"
+                                        className="aspect-square squircle-element border border-dashed border-white/30 bg-white/5 flex items-center justify-center hover:bg-white/10 transition group"
                                         title="Ver todas las imágenes"
                                     >
                                         <Icon
                                             icon="ph:plus-bold"
-                                            width="20"
+                                            width="16"
                                             className="text-blue-400 group-hover:text-blue-300 transition-colors"
                                         />
                                     </button>
                                 </PopoverTrigger>
-
                                 <PopoverContent
                                     side="right"
                                     align="start"
                                     sideOffset={12}
-                                    className="w-[400px] p-0 border-0 shadow-2xl"
+                                    className="w-100 p-0 border-0 shadow-2xl"
                                 >
-                                    <div className="flex flex-col bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl max-h-[500px]">
+                                    <div className="flex flex-col bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl max-h-125">
                                         {/* Header con categorías */}
                                         <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-white/2 flex-wrap">
                                             <button
@@ -451,12 +449,12 @@ export function ElementsMenu({
                                 <div className="space-y-2">
                                     <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">Color</div>
                                     <div className="flex gap-2">
-                                        <div className="grid grid-cols-5 gap-1.5 flex-1">
+                                        <div className="grid grid-cols-5 gap-2 flex-1">
                                             {PRESET_COLORS.map((color) => (
                                                 <button
                                                     key={color}
                                                     onClick={() => setShapeColor(color)}
-                                                    className={`aspect-square rounded border-2 transition-all ${shapeColor === color ? "border-white scale-110" : "border-white/20 hover:border-white/40"
+                                                    className={`aspect-square squircle-element cursor-pointer transition-all border border-white/20 ${shapeColor === color ? "ring-2 ring-white/90 border-white/40 shadow-md shadow-black/50" : "border-white/10 hover:border-white/30 hover:ring-1 ring-white/20"
                                                         }`}
                                                     style={{ backgroundColor: color }}
                                                     title={color}
@@ -471,7 +469,7 @@ export function ElementsMenu({
                                                 className="absolute inset-0 opacity-0 cursor-pointer"
                                             />
                                             <div
-                                                className="w-10 h-10 rounded border-2 border-white/20 hover:border-white/40 transition flex items-center justify-center"
+                                                className="w-10 h-10 aspect-square squircle-element border border-dashed border-white/30 bg-white/5 flex items-center justify-center hover:bg-white/10 transition group"
                                                 style={{ backgroundColor: shapeColor }}
                                             >
                                                 <Icon icon="mdi:eyedropper" width="18" className="text-white mix-blend-difference" />
@@ -522,22 +520,13 @@ export function ElementsMenu({
                             {/* Acciones del elemento */}
                             <div className="space-y-2">
                                 <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">Acciones</div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                        onClick={() => onDuplicateElement?.(selectedElement.id)}
-                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-white/70 hover:text-white transition-all"
-                                    >
-                                        <Icon icon="ph:copy-bold" width="16" />
-                                        Duplicar
-                                    </button>
-                                    <button
-                                        onClick={() => onDeleteElement?.(selectedElement.id)}
-                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-xs text-red-400 hover:text-red-300 transition-all"
-                                    >
-                                        <Icon icon="ph:trash-bold" width="16" />
-                                        Eliminar
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={() => onDeleteElement?.(selectedElement.id)}
+                                    className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-xs text-red-400 hover:text-red-300 transition-all"
+                                >
+                                    <Icon icon="ph:trash-bold" width="16" />
+                                    Eliminar
+                                </button>
                             </div>
                         </>
                     )}
@@ -616,7 +605,7 @@ export function ElementsMenu({
                         <div className="space-y-2">
                             <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">Fuente</div>
                             <Select value={textFontFamily} onValueChange={setTextFontFamily}>
-                                <SelectTrigger 
+                                <SelectTrigger
                                     className="w-full bg-white/4 hover:bg-white/[0.07] transition border-white/8 squircle-element text-white/80"
                                     style={{ fontFamily: textFontFamily }}
                                 >
@@ -624,8 +613,8 @@ export function ElementsMenu({
                                 </SelectTrigger>
                                 <SelectContent className="bg-[#1a1a1e] border-white/10">
                                     {FONT_FAMILIES.map((f) => (
-                                        <SelectItem 
-                                            key={f} 
+                                        <SelectItem
+                                            key={f}
                                             value={f}
                                             className="text-white/80 hover:bg-white/10 cursor-pointer"
                                             style={{ fontFamily: f }}
@@ -642,12 +631,12 @@ export function ElementsMenu({
                     <div className="space-y-2">
                         <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">Color</div>
                         <div className="flex gap-2">
-                            <div className="grid grid-cols-5 gap-1.5 flex-1">
+                            <div className="grid grid-cols-5 gap-2 flex-1">
                                 {PRESET_COLORS.map((color) => (
                                     <button
                                         key={color}
                                         onClick={() => setTextColor(color)}
-                                        className={`aspect-square rounded border-2 transition-all ${textColor === color ? "border-white scale-110" : "border-white/20 hover:border-white/40"
+                                        className={`aspect-square squircle-element cursor-pointer transition-all border border-white/20 ${textColor === color ? "ring-2 ring-white/90 border-white/40 shadow-md shadow-black/50" : "border-white/10 hover:border-white/30 hover:ring-1 ring-white/20"
                                             }`}
                                         style={{ backgroundColor: color }}
                                         title={color}
@@ -662,7 +651,7 @@ export function ElementsMenu({
                                     className="absolute inset-0 opacity-0 cursor-pointer"
                                 />
                                 <div
-                                    className="w-10 h-10 rounded border-2 border-white/20 hover:border-white/40 transition flex items-center justify-center"
+                                    className="w-10 h-10 aspect-square squircle-element border border-dashed border-white/30 bg-white/5 flex items-center justify-center hover:bg-white/10 transition group"
                                     style={{ backgroundColor: textColor }}
                                 >
                                     <Icon icon="mdi:eyedropper" width="18" className="text-white mix-blend-difference" />
@@ -679,7 +668,7 @@ export function ElementsMenu({
                                 <button
                                     key={w.key}
                                     onClick={() => setTextFontWeight(w.key)}
-                                    className={`px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all squircle-element ${textFontWeight === w.key ? "bg-white/10 text-white border border-white/15" : "bg-white/3 text-white/35 hover:text-white/70 border border-white/6"
+                                    className={`px-3 py-2 rounded-lg text-xs transition-all squircle-element ${textFontWeight === w.key ? "bg-white/10 text-white border border-white/15" : "bg-white/3 text-white/35 hover:text-white/70 border border-white/6"
                                         }`}
                                 >
                                     {w.label}
@@ -694,7 +683,7 @@ export function ElementsMenu({
                     </div>
 
                     {/* Botón para agregar texto */}
-                    <button
+                    <Button
                         onClick={() => {
                             const timestamp = Date.now();
                             const newElement: TextElement = {
@@ -715,11 +704,12 @@ export function ElementsMenu({
                             };
                             onAddElement(newElement);
                         }}
-                        className="w-full flex items-center justify-center gap-2 py-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 rounded-lg text-sm font-medium text-blue-300 transition-all active:scale-95"
+                        variant="outline"
+                        className="w-full text-xs"
                     >
                         <Icon icon="ph:plus-bold" width="16" />
                         Agregar texto
-                    </button>
+                    </Button>
 
                     {/* Controles para texto seleccionado */}
                     {selectedElement && selectedElement.type === "text" && (
@@ -728,42 +718,33 @@ export function ElementsMenu({
                             <div className="space-y-2">
                                 <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">Jerarquía</div>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <button
+                                    <Button variant="outline" className="text-xs"
                                         onClick={() => onBringToFront?.(selectedElement.id)}
-                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-white/70 hover:text-white transition-all"
+
                                     >
                                         <Icon icon="ph:bring-to-front-bold" width="16" />
                                         Traer al frente
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button variant="outline" className="text-xs"
                                         onClick={() => onSendToBack?.(selectedElement.id)}
-                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-white/70 hover:text-white transition-all"
+
                                     >
                                         <Icon icon="ph:send-to-back-bold" width="16" />
                                         Enviar atrás
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
 
                             {/* Acciones del elemento */}
                             <div className="space-y-2">
                                 <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">Acciones</div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                        onClick={() => onDuplicateElement?.(selectedElement.id)}
-                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-white/70 hover:text-white transition-all"
-                                    >
-                                        <Icon icon="ph:copy-bold" width="16" />
-                                        Duplicar
-                                    </button>
-                                    <button
-                                        onClick={() => onDeleteElement?.(selectedElement.id)}
-                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-xs text-red-400 hover:text-red-300 transition-all"
-                                    >
-                                        <Icon icon="ph:trash-bold" width="16" />
-                                        Eliminar
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={() => onDeleteElement?.(selectedElement.id)}
+                                    className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-xs text-red-400 hover:text-red-300 transition-all"
+                                >
+                                    <Icon icon="ph:trash-bold" width="16" />
+                                    Eliminar
+                                </button>
                             </div>
                         </>
                     )}

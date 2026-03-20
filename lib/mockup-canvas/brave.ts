@@ -21,7 +21,7 @@ export function drawBraveMockup(context: MockupCanvasContext): MockupDrawResult 
     const { ctx, x, y, width, height, config, cornerRadius, shadowBlur } = context;
     const isDark = config.darkMode;
     const frameColor = config.frameColor;
-    const url = config.url || "https://freeshot.dev";
+    const url = config.url || "https://openvid.dev";
     const headerOpacity = config.headerOpacity ?? 100;
 
     const headerScale = (config.headerScale || 100) / 100;

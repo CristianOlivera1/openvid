@@ -3,7 +3,7 @@
  * Stores a single uploaded video at a time (replaces previous uploads)
  */
 
-const DB_NAME = "freeshot-uploaded-videos";
+const DB_NAME = "openvid-uploaded-videos";
 const DB_VERSION = 1;
 const STORE_NAME = "videos";
 const SINGLE_VIDEO_KEY = "current-uploaded-video";

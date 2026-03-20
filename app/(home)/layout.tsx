@@ -1,8 +1,8 @@
 "use client";
 
 import "../globals.css";
-import Header from "../components/common/header";
-import Footer from "../components/common/footer";
+import Header from "../components/common/Header";
+import Footer from "../components/common/Footer";
 import { RecordingProvider } from "@/hooks/RecordingContext";
 import RecordingOverlay from "../components/ui/RecordingOverlay";
 

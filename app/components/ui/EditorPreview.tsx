@@ -108,7 +108,7 @@ export default function EditorPreview() {
                   <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]"></div>
                 </div>
                 <div className="flex-1 text-center">
-                  <div className="inline-block px-3 py-0.5 rounded bg-black/20 text-[10px] text-neutral-500 font-mono">freeshot.app</div>
+                  <div className="inline-block px-3 py-0.5 rounded bg-black/20 text-[10px] text-neutral-500 font-mono">openvid.app</div>
                 </div>
               </div>
               <div className="p-6 relative h-full">

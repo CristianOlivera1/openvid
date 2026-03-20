@@ -511,18 +511,19 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
         // 6. Render canvas elements (SVG, images, text)
         // Elements are rendered after video but before zoom restore, so they're affected by zoom
         const sortedElements = [...canvasElements].sort((a, b) => a.zIndex - b.zIndex);
-        
+        const SVG_SCALE_FACTOR = 0.45;
+
         for (const element of sortedElements) {
             if (element.type === "svg") {
                 const svgElement = element as SvgElement;
                 // Get SVG as data URL  
                 const svgDataUrl = getSvgDataUrl(svgElement.svgId, svgElement.color || "#FFFFFF");
                 if (!svgDataUrl) continue;
-                
+
                 // Create image from SVG data URL
                 const svgImage = new Image();
                 svgImage.src = svgDataUrl;
-                
+
                 // Wait for image to load
                 await new Promise<void>((resolve) => {
                     if (svgImage.complete) {
@@ -532,20 +533,20 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                         svgImage.onerror = () => resolve(); // Continue even if load fails
                     }
                 });
-                
+
                 ctx.save();
-                
+
                 // Calculate element position and size in pixels (width and height are stored as percentage of canvas width for aspect ratio)
                 const elemX = (svgElement.x / 100) * canvasWidth;
                 const elemY = (svgElement.y / 100) * canvasHeight;
-                const elemWidth = (svgElement.width / 100) * canvasWidth;
-                const elemHeight = (svgElement.height / 100) * canvasWidth; // Use canvasWidth for square aspect ratio
-                
+                const elemWidth = (svgElement.width / 100) * canvasWidth * SVG_SCALE_FACTOR;
+                const elemHeight = (svgElement.height / 100) * canvasWidth * SVG_SCALE_FACTOR;
+
                 // Apply transform: translate to center, rotate, translate back
                 ctx.translate(elemX, elemY);
                 ctx.rotate((svgElement.rotation * Math.PI) / 180);
                 ctx.globalAlpha = svgElement.opacity;
-                
+
                 // Draw the SVG
                 ctx.drawImage(
                     svgImage,
@@ -554,24 +555,24 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                     elemWidth,
                     elemHeight
                 );
-                
+
                 ctx.restore();
             } else if (element.type === "image") {
                 const img = elementImagesRef.current.get(element.imagePath);
                 if (!img) continue;
-                
+
                 ctx.save();
-                
+
                 // Calculate element position and size in pixels (width and height are stored as percentage of canvas width for aspect ratio)
                 const elemX = (element.x / 100) * canvasWidth;
                 const elemY = (element.y / 100) * canvasHeight;
                 const elemWidth = (element.width / 100) * canvasWidth;
                 const elemHeight = (element.height / 100) * canvasWidth; // Use canvasWidth for square aspect ratio
-                
+
                 ctx.translate(elemX, elemY);
                 ctx.rotate((element.rotation * Math.PI) / 180);
                 ctx.globalAlpha = element.opacity;
-                
+
                 ctx.drawImage(
                     img,
                     -elemWidth / 2,
@@ -579,18 +580,18 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                     elemWidth,
                     elemHeight
                 );
-                
+
                 ctx.restore();
             } else if (element.type === "text") {
                 ctx.save();
-                
+
                 const elemX = (element.x / 100) * canvasWidth;
                 const elemY = (element.y / 100) * canvasHeight;
-                
+
                 ctx.translate(elemX, elemY);
                 ctx.rotate((element.rotation * Math.PI) / 180);
                 ctx.globalAlpha = element.opacity;
-                
+
                 // Configure text style with scaled fontSize
                 // Scale fontSize proportionally to canvas width (reference: 1080px)
                 const scaledFontSize = element.fontSize * (canvasWidth / 1080);
@@ -599,10 +600,10 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                 ctx.fillStyle = element.color;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                
+
                 // Draw text
                 ctx.fillText(element.content, 0, 0);
-                
+
                 ctx.restore();
             }
         }
@@ -794,6 +795,13 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                         <div
                             ref={canvasContainerRef}
                             className="absolute inset-0 pointer-events-none"
+                            onClick={(e) => {
+                                // Deselect element if clicking on background (not on an element)
+                                if (e.target === e.currentTarget && onElementSelect) {
+                                    onElementSelect(null);
+                                }
+                            }}
+                            style={{ pointerEvents: 'auto' }}
                         >
                             {/* Sort elements by zIndex for proper layering */}
                             {[...canvasElements].sort((a, b) => a.zIndex - b.zIndex).map((element) => {

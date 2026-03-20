@@ -3,7 +3,7 @@
  * Prevents regenerating thumbnails for the same video
  */
 
-const DB_NAME = "freeshot-thumbnails";
+const DB_NAME = "openvid-thumbnails";
 const DB_VERSION = 1;
 const STORE_NAME = "thumbnails";
 

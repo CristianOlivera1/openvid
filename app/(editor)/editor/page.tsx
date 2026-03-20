@@ -49,7 +49,7 @@ export default function Editor() {
     // Custom background images
     const [uploadedImages, setUploadedImages] = useState<string[]>(() => {
         if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem("freeshot-uploaded-images");
+            const stored = localStorage.getItem("openvid-uploaded-images");
             if (stored) {
                 try {
                     const parsed = JSON.parse(stored);
@@ -157,23 +157,39 @@ export default function Editor() {
 
     const selectCanvasElement = useCallback((id: string | null) => {
         setSelectedElementId(id);
+        // Auto-open elements menu when selecting an element
+        if (id) {
+            setActiveTool("elements");
+        }
     }, []);
 
-    const duplicateCanvasElement = useCallback((id: string) => {
-        const element = canvasElements.find(el => el.id === id);
-        if (!element) return;
+
+    // Copy/paste handlers
+    const [copiedElement, setCopiedElement] = useState<CanvasElement | null>(null);
+
+    const copySelectedElement = useCallback(() => {
+        if (!selectedElementId) return;
+        const element = canvasElements.find(el => el.id === selectedElementId);
+        if (element) {
+            setCopiedElement(element);
+        }
+    }, [selectedElementId, canvasElements]);
+
+    const pasteElement = useCallback(() => {
+        if (!copiedElement) return;
         
         const newElement = {
-            ...element,
-            id: `${element.type}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            x: element.x + 5, // Offset slightly
-            y: element.y + 5,
+            ...copiedElement,
+            id: `${copiedElement.type}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            x: copiedElement.x + 5, // Offset slightly from original
+            y: copiedElement.y + 5,
             zIndex: Date.now(),
         } as CanvasElement;
         
         setCanvasElements(prev => [...prev, newElement]);
         setSelectedElementId(newElement.id);
-    }, [canvasElements]);
+        setActiveTool("elements");
+    }, [copiedElement]);
 
     const bringToFront = useCallback((id: string) => {
         const maxZIndex = Math.max(...canvasElements.map(el => el.zIndex), 0);
@@ -277,7 +293,7 @@ export default function Editor() {
 
     useEffect(() => {
         if (uploadedImages.length > 0) {
-            localStorage.setItem("freeshot-uploaded-images", JSON.stringify(uploadedImages));
+            localStorage.setItem("openvid-uploaded-images", JSON.stringify(uploadedImages));
         }
     }, [uploadedImages]);
 
@@ -552,6 +568,20 @@ export default function Editor() {
                 return;
             }
 
+            // Copy element (Ctrl+C or Cmd+C)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedElementId) {
+                e.preventDefault();
+                copySelectedElement();
+                return;
+            }
+
+            // Paste element (Ctrl+V or Cmd+V)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                e.preventDefault();
+                pasteElement();
+                return;
+            }
+
             // Delete selected canvas element with Delete or Backspace
             if ((e.key === "Delete" || e.key === "Backspace") && selectedElementId) {
                 e.preventDefault();
@@ -580,7 +610,7 @@ export default function Editor() {
 
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [selectedElementId, selectedZoomFragmentId, deleteCanvasElement, handleDeleteZoomFragment]);
+    }, [selectedElementId, selectedZoomFragmentId, deleteCanvasElement, handleDeleteZoomFragment, copySelectedElement, pasteElement]);
 
     useEffect(() => {
         const checkMobile = () => {
@@ -684,7 +714,6 @@ export default function Editor() {
                                     selectedCanvasElement={canvasElements.find(el => el.id === selectedElementId) || null}
                                     onUpdateCanvasElement={updateCanvasElement}
                                     onDeleteCanvasElement={deleteCanvasElement}
-                                    onDuplicateCanvasElement={duplicateCanvasElement}
                                     onBringToFront={bringToFront}
                                     onSendToBack={sendToBack}
                                 />

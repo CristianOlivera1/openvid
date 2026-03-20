@@ -68,7 +68,6 @@ export function ControlPanel({
     selectedCanvasElement,
     onUpdateCanvasElement,
     onDeleteCanvasElement,
-    onDuplicateCanvasElement,
     onBringToFront,
     onSendToBack,
 }: ExtendedControlPanelProps) {
@@ -76,7 +75,7 @@ export function ControlPanel({
         <div className="relative w-[320px] h-screen bg-[#141417] border-r border-white/10 flex flex-col shrink-0">
             <header className="flex items-center justify-between h-13 p-2 border-b border-white/10 shrink-0">
                 <Link href="/" className="flex items-center gap-2 group">
-                    <Image src="/svg/logo-freeshot.svg" alt="Logo" width={30} height={30} />
+                    <Image src="/svg/logo-openvid.svg" alt="Logo" width={30} height={30} />
                     <span className="hidden sm:flex text-white font-semibold text-sm transition-colors group-hover:text-neutral-200">
                         Free
                         <span className="relative inline-block px-1 ml-0.5">
@@ -219,7 +218,6 @@ export function ControlPanel({
                         selectedElement={selectedCanvasElement}
                         onUpdateElement={onUpdateCanvasElement}
                         onDeleteElement={onDeleteCanvasElement}
-                        onDuplicateElement={onDuplicateCanvasElement}
                         onBringToFront={onBringToFront}
                         onSendToBack={onSendToBack}
                     />

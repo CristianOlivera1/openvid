@@ -47,7 +47,6 @@ export interface ControlPanelProps {
     selectedCanvasElement?: CanvasElement | null;
     onUpdateCanvasElement?: (id: string, updates: Partial<CanvasElement>) => void;
     onDeleteCanvasElement?: (id: string) => void;
-    onDuplicateCanvasElement?: (id: string) => void;
     onBringToFront?: (id: string) => void;
     onSendToBack?: (id: string) => void;
 }

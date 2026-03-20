@@ -130,20 +130,20 @@ function SortableStopList({ stops, onReorder, onColorChange, onPositionChange, o
         // ── Ghost element ────────────────────────────────────────────────────
         const ghost = rowEl.cloneNode(true) as HTMLDivElement;
         Object.assign(ghost.style, {
-            position:      "fixed",
+            position: "fixed",
             pointerEvents: "none",
-            zIndex:        "9999",
-            width:         `${rect.width}px`,
-            height:        `${rect.height}px`,
-            left:          `${rect.left}px`,
-            top:           `${rect.top}px`,
-            opacity:       "0.93",
-            transform:     "scale(1.02) rotate(0.5deg)",
-            boxShadow:     "0 16px 48px rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.5)",
-            borderRadius:  "8px",
-            background:    "#1c1c1f",
-            border:        "1px solid rgba(255,255,255,0.13)",
-            willChange:    "left,top",
+            zIndex: "9999",
+            width: `${rect.width}px`,
+            height: `${rect.height}px`,
+            left: `${rect.left}px`,
+            top: `${rect.top}px`,
+            opacity: "0.93",
+            transform: "scale(1.02) rotate(0.5deg)",
+            boxShadow: "0 16px 48px rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.5)",
+            borderRadius: "8px",
+            background: "#1c1c1f",
+            border: "1px solid rgba(255,255,255,0.13)",
+            willChange: "left,top",
         });
         document.body.appendChild(ghost);
         ghostRef.current = ghost;
@@ -151,17 +151,17 @@ function SortableStopList({ stops, onReorder, onColorChange, onPositionChange, o
         // ── Indicator line ───────────────────────────────────────────────────
         const indicator = document.createElement("div");
         Object.assign(indicator.style, {
-            position:   "absolute",
-            left:       "0",
-            right:      "0",
-            height:     "2px",
+            position: "absolute",
+            left: "0",
+            right: "0",
+            height: "2px",
             background: "linear-gradient(90deg,transparent 0%,#6366f1 20%,#818cf8 80%,transparent 100%)",
             borderRadius: "2px",
-            opacity:    "0",
+            opacity: "0",
             transition: "top 80ms cubic-bezier(0.25,0.46,0.45,0.94), opacity 60ms ease",
-            zIndex:     "10",
+            zIndex: "10",
             pointerEvents: "none",
-            marginTop:  "-1px",
+            marginTop: "-1px",
         });
         if (listRef.current) {
             listRef.current.style.position = "relative";
@@ -180,7 +180,7 @@ function SortableStopList({ stops, onReorder, onColorChange, onPositionChange, o
         // ── Pointer move ─────────────────────────────────────────────────────
         const onMove = (mv: PointerEvent) => {
             ghost.style.left = `${mv.clientX - offsetRef.current.x}px`;
-            ghost.style.top  = `${mv.clientY - offsetRef.current.y}px`;
+            ghost.style.top = `${mv.clientY - offsetRef.current.y}px`;
 
             // Hit-test against ORIGINAL (pre-transform) midpoints — no jitter
             const origs = originalRectsRef.current;
@@ -207,7 +207,7 @@ function SortableStopList({ stops, onReorder, onColorChange, onPositionChange, o
             indicatorRef.current = null;
 
             const from = dragIdxRef.current;
-            const to   = overIdxRef.current;
+            const to = overIdxRef.current;
 
             // Snap items to final positions instantly before React re-renders
             // so there's no visual jump when state updates
@@ -215,8 +215,8 @@ function SortableStopList({ stops, onReorder, onColorChange, onPositionChange, o
                 const items2 = getItemEls();
                 items2.forEach(el => {
                     el.style.transition = "none";
-                    el.style.transform  = "";
-                    el.style.opacity    = "";
+                    el.style.transform = "";
+                    el.style.opacity = "";
                 });
             } else {
                 resetVisuals();
@@ -239,7 +239,7 @@ function SortableStopList({ stops, onReorder, onColorChange, onPositionChange, o
 
         document.addEventListener("pointermove", onMove);
         document.addEventListener("pointerup", onUp);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -433,8 +433,15 @@ export function BackgroundColorEditor({ value, onChange }: BackgroundColorEditor
                             ))}
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <button className="aspect-square squircle-element border border-dashed border-white/30 bg-white/5 flex items-center justify-center hover:bg-white/10 transition group" title="Ver más">
-                                        <Icon icon="lucide:plus" className="text-white/60 group-hover:text-white" width="14" />
+                                    <button
+                                        className="aspect-square squircle-element border border-dashed border-white/30 bg-white/5 flex items-center justify-center hover:bg-white/10 transition group"
+                                        title="Ver más colores"
+                                    >
+                                        <Icon
+                                            icon="ph:plus-bold"
+                                            width="16"
+                                            className="text-blue-400 group-hover:text-blue-300 transition-colors"
+                                        />
                                     </button>
                                 </PopoverTrigger>
                                 <PopoverContent side="right" align="start" sideOffset={12} className="w-72 p-0 border-0 shadow-2xl">
@@ -498,8 +505,15 @@ export function BackgroundColorEditor({ value, onChange }: BackgroundColorEditor
                             })}
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <button className="aspect-square squircle-element border border-dashed border-white/30 bg-white/5 flex items-center justify-center hover:bg-white/10 transition group" title="Ver más">
-                                        <Icon icon="lucide:plus" className="text-white/60 group-hover:text-white" width="14" />
+                                    <button
+                                        className="aspect-square squircle-element border border-dashed border-white/30 bg-white/5 flex items-center justify-center hover:bg-white/10 transition group"
+                                        title="Ver más gradientes"
+                                    >
+                                        <Icon
+                                            icon="ph:plus-bold"
+                                            width="16"
+                                            className="text-blue-400 group-hover:text-blue-300 transition-colors"
+                                        />
                                     </button>
                                 </PopoverTrigger>
                                 <PopoverContent side="right" align="start" sideOffset={12} className="w-72 p-0 border-0 shadow-2xl">

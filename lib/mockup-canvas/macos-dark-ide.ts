@@ -12,7 +12,7 @@ export function drawMacosDarkIdeMockup(context: MockupCanvasContext): MockupDraw
     const { ctx, x, y, width, height, config, cornerRadius, shadowBlur } = context;
     const isDark        = config.darkMode;
     const frameColor    = config.frameColor;
-    const url           = config.url || "freeshot";
+    const url           = config.url || "openvid";
     const headerOpacity = config.headerOpacity ?? 100;
     const headerScale   = (config.headerScale || 100) / 100;
 

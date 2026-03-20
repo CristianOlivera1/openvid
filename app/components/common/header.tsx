@@ -30,7 +30,7 @@ export default function Header() {
     >
       <div className="max-w-6xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
-          <Image src="/svg/logo-freeshot.svg" alt="Logo" width={50} height={50} />
+          <Image src="/svg/logo-openvid.svg" alt="Logo" width={50} height={50} />
           <span className="hidden sm:flex text-white font-semibold text-lg transition-colors group-hover:text-neutral-200">
             Free
             <span className="relative inline-block px-1 ml-0.5">
