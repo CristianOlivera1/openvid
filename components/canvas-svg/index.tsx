@@ -1,8 +1,3 @@
-/**
- * Inline SVG components for canvas elements
- * These can be dynamically colored
- */
-
 interface SvgProps {
     color?: string;
     className?: string;
@@ -146,7 +141,6 @@ export const SplashSvg = ({ color = "currentColor", className }: SvgProps) => (
     </svg>
 );
 
-// Map of SVG components by ID
 export const SVG_COMPONENTS: Record<string, React.FC<SvgProps>> = {
     "rectangle": RectangleSvg,
     "circle": CircleSvg,
@@ -172,7 +166,6 @@ export const SVG_COMPONENTS: Record<string, React.FC<SvgProps>> = {
     "splash": SplashSvg,
 };
 
-// SVG data for each shape (for canvas export) - uses exact same paths as React components
 interface SvgData {
     viewBox: string;
     paths: string;
@@ -271,24 +264,16 @@ const SVG_DATA: Record<string, SvgData> = {
     }
 };
 
-/**
- * Generate a data URL for an SVG with the specified color
- * Uses exact same paths and viewBox as the React components for consistent rendering
- */
 export function getSvgDataUrl(svgId: string, color: string): string {
     const svgData = SVG_DATA[svgId];
     if (!svgData) return '';
 
-    // Determine if this SVG uses stroke instead of fill (arrows use stroke)
     const usesStroke = svgData.paths.includes('stroke-linecap') || svgData.paths.includes('stroke-linejoin');
 
-    // Apply color to the path
     let styledPath: string;
     if (usesStroke) {
-        // For stroke-based SVGs (arrows, etc.)
         styledPath = svgData.paths.replace(/<path/g, `<path fill="none" stroke="${color}"`);
     } else {
-        // For fill-based SVGs (shapes, decorative elements)
         styledPath = svgData.paths.replace(/<(path|rect|circle)/g, `<$1 fill="${color}" stroke="${color}"`);
     }
 

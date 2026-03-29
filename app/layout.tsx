@@ -64,9 +64,9 @@ export const metadata: Metadata = {
     canonical: "https://openvid.dev/",
   },
   icons: {
-    icon: "/images/metadata/favicon.svg",  //32 x 32 px.
-    shortcut: "/images/metadata/shortcut.svg", //16 x 16 px.
-    apple: "/images/metadata/apple.svg", //180 x 180 px
+    icon: "/images/metadata/favicon.svg",
+    shortcut: "/images/metadata/shortcut.svg",
+    apple: "/images/metadata/apple.svg",
   },
   openGraph: {
     type: "website",
@@ -85,7 +85,7 @@ export const metadata: Metadata = {
     locale: "es_ES",
     siteName: "openvid",
   },
-  twitter: { // 1200 x 630 px
+  twitter: {
     card: "summary_large_image",
     title: "openvid - Crea demos profesionales y edita en segundos",
     description:

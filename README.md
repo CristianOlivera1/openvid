@@ -1,8 +1,8 @@
 <div align="center">
 
-<img width="100%" alt="OpenVidShot Hero" src="./public/images/hero-preview.png" />
+<img width="100%" alt="openvid Hero" src="./public/images/hero-preview.png" />
 
-# OpenVidShot
+# openvid
 
 ### Professional screen recording & video editing in your browser
 

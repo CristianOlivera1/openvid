@@ -67,7 +67,7 @@ export default function InteractiveRecordingSteps() {
       title: "Inicia la captura",
       description: (
         <p>
-          Haz clic en el botón de abajo. Tu navegador te pedirá qué deseas compartir. Para un rendimiento óptimo y tomas más limpias, te recomendamos seleccionar una <strong>Pestaña</strong> o <strong>Ventana específica</strong>.
+          Haz clic en el botón de abajo. Tu navegador te pedirá qué deseas compartir. Para un rendimiento óptimo y tomas más limpias, te recomendamos seleccionar una <strong className="text-gray-200">Pestaña</strong> o <strong className="text-gray-200">Ventana específica</strong>.
         </p>
       ),
       isReversed: true,
@@ -171,7 +171,7 @@ export default function InteractiveRecordingSteps() {
       title: "Oculta las distracciones",
       description: (
         <p>
-          Al compartir tu pantalla, tu navegador mostrará automáticamente una barra flotante avisando que la captura está activa. Haz clic en <strong>&quot;Ocultar&quot;</strong> para asegurarte de que no aparezca en tu video final.
+          Al compartir tu pantalla, tu navegador mostrará automáticamente una barra flotante avisando que la captura está activa. Haz clic en <strong className="text-gray-200">&quot;Ocultar&quot;</strong> para asegurarte de que no aparezca en tu video final.
         </p>
       ),
       isReversed: false,
