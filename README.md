@@ -1,5 +1,5 @@
 <div align="center">
-<img width="20%" alt="openvid Hero" src="https://openvid.dev/images/pages/openvid.svg" />
+<img width="50%" alt="openvid Hero" src="https://openvid.dev/images/pages/openvid.svg" />
 
 ### Crea demos profesionales en segundos, directamente en tu navegador
 
