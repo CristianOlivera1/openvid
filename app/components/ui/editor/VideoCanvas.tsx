@@ -48,6 +48,7 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     mockupId = "none",
     mockupConfig,
     onVideoUpload,
+    onVideoDelete,
     isUploading = false,
     videoTransform = { rotation: 0, translateX: 0, translateY: 0 },
     onVideoTransformChange,
@@ -1023,6 +1024,28 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                                             crossOrigin="anonymous"
                                                             className="absolute inset-0 w-full h-full object-contain"
                                                         />
+                                                    )}
+                                                    {onVideoDelete && isVideoHovered && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                onVideoDelete();
+                                                            }}
+                                                            onMouseDown={(e) => e.stopPropagation()}
+                                                            title="Eliminar video cargado"
+                                                            aria-label="Eliminar video cargado"
+                                                            className="absolute top-2 right-2 z-20 flex items-center gap-1 rounded-md bg-red-600/90 hover:bg-red-500 text-white text-xs font-medium px-2 py-1 shadow-lg backdrop-blur-sm transition-colors cursor-pointer pointer-events-auto"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                                <path d="M3 6h18" />
+                                                                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                                                <line x1="10" y1="11" x2="10" y2="17" />
+                                                                <line x1="14" y1="11" x2="14" y2="17" />
+                                                            </svg>
+                                                            Eliminar
+                                                        </button>
                                                     )}
                                                 </div>
                                             ) : (

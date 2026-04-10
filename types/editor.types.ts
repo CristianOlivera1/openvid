@@ -83,6 +83,7 @@ export interface VideoCanvasProps {
     mockupConfig?: import("./mockup.types").MockupConfig;
     // Video upload props
     onVideoUpload?: (file: File) => void;
+    onVideoDelete?: () => void;
     isUploading?: boolean;
     // Transform props
     videoTransform?: VideoTransform;

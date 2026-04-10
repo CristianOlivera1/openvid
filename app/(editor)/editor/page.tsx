@@ -636,7 +636,7 @@ export default function Editor() {
     );
 
     const { exportVideo, cancelExport, exportProgress } = useVideoExport(videoRef, canvasRef);
-    const { uploadVideo, loadUploadedVideo, isUploading } = useVideoUpload();
+    const { uploadVideo, loadUploadedVideo, clearUploadedVideo, isUploading } = useVideoUpload();
     const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
 
     const handleExport = (quality: ExportQuality) => {
@@ -707,6 +707,41 @@ export default function Editor() {
             setTimeout(() => clearHistory(), 200);
         }
     }, [uploadVideo, clearHistory]);
+
+    // Handler para eliminar el video cargado
+    const handleDeleteVideo = useCallback(async () => {
+        const confirmed = window.confirm("¿Estás seguro de que quieres eliminar el video cargado? Esta acción no se puede deshacer.");
+        if (!confirmed) return;
+
+        try {
+            // Liberar el ObjectURL anterior si existe
+            if (videoUrl) {
+                try { URL.revokeObjectURL(videoUrl); } catch { /* noop */ }
+            }
+
+            // Borrar de IndexedDB
+            await clearUploadedVideo();
+
+            // Limpiar cache de thumbnails
+            try { await clearAllThumbnailCache(); } catch { /* noop */ }
+
+            // Resetear estado del editor
+            lastLoadedVideoIdRef.current = null;
+            setVideoBlob(null);
+            setVideoUrl(null);
+            setVideoId(null);
+            setVideoDuration(0);
+            setTrimRange({ start: 0, end: 0 });
+            setCurrentTime(0);
+            setIsPlaying(false);
+            setZoomFragments([]);
+            setVideoDimensions({ width: 0, height: 0 });
+
+            setTimeout(() => clearHistory(), 200);
+        } catch (error) {
+            console.error("Error deleting video:", error);
+        }
+    }, [videoUrl, clearUploadedVideo, clearHistory]);
 
     // Track last loaded video to detect changes
     const lastLoadedVideoIdRef = useRef<string | null>(null);
@@ -1413,6 +1448,7 @@ export default function Editor() {
                         mockupConfig={mockupConfig ?? DEFAULT_MOCKUP_CONFIG}
                         // Video upload props
                         onVideoUpload={handleVideoUpload}
+                        onVideoDelete={handleDeleteVideo}
                         isUploading={isUploading}
                         // Transform props
                         videoTransform={videoTransform}
