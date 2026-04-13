@@ -1,3 +1,5 @@
+import type { VideoTrackClip } from "./video-track.types";
+
 export type ExportQuality = "4k" | "2k" | "1080p" | "720p" | "480p" | "gif" | "webm-alpha";
 
 export interface TrimSettings {
@@ -22,6 +24,10 @@ export interface ExportSettings {
     }>;
     masterVolume?: number;
     videoBlob?: Blob;
+    // Multi-video clips (for concatenated videos)
+    videoClips?: VideoTrackClip[];
+    // Video blobs map for multi-clip export (libraryVideoId -> Blob)
+    videoClipBlobs?: Map<string, Blob>;
 }
 
 export interface ExportProgress {
