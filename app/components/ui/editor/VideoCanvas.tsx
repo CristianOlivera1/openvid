@@ -58,6 +58,10 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     // Cursor props
     // cursorConfig = DEFAULT_CURSOR_CONFIG,
     // cursorData = EMPTY_CURSOR_DATA,
+    // Camera overlay props
+    cameraUrl = null,
+    cameraConfig = null,
+    onCameraConfigChange,
 }, ref) {
     const wallpaperUrl = getWallpaperUrl(selectedWallpaper);
 
@@ -191,6 +195,19 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     const dragStartPos = useRef({ x: 0, y: 0, initialRotation: 0, initialTranslateX: 0, initialTranslateY: 0 });
     const lastAngleRef = useRef<number | null>(null);
     const videoContainerRef = useRef<HTMLDivElement>(null);
+
+    // Camera overlay refs / state
+    const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+    const previewContainerRef = useRef<HTMLDivElement>(null);
+    const cameraDragRef = useRef<{
+        pointerId: number;
+        startX: number;
+        startY: number;
+        initialX: number;
+        initialY: number;
+        rect: DOMRect;
+    } | null>(null);
+    const [isDraggingCamera, setIsDraggingCamera] = useState(false);
 
     // Canvas elements controls state
     const [hoveredElementId, setHoveredElementId] = useState<string | null>(null);
@@ -331,6 +348,59 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
             window.removeEventListener("mouseup", handleMouseUp);
         };
     }, [isDraggingVideo, isDraggingRotation, videoTransform, onVideoTransformChange]);
+
+    // Camera overlay: load src when cameraUrl changes
+    useEffect(() => {
+        const el = cameraVideoRef.current;
+        if (!el) return;
+        if (!cameraUrl) {
+            if (el.src) {
+                el.pause();
+                el.removeAttribute("src");
+                el.load();
+            }
+            return;
+        }
+        if (el.src !== cameraUrl) {
+            el.src = cameraUrl;
+            el.load();
+        }
+    }, [cameraUrl]);
+
+    // Camera overlay: sync playback with main video (time, play/pause, seek)
+    useEffect(() => {
+        const mainVideo = videoRef.current;
+        const camVideo = cameraVideoRef.current;
+        if (!mainVideo || !camVideo || !cameraUrl) return;
+
+        const syncTime = () => {
+            if (!camVideo.seeking && Math.abs(camVideo.currentTime - mainVideo.currentTime) > 0.15) {
+                try {
+                    camVideo.currentTime = mainVideo.currentTime;
+                } catch {
+                    // ignore seek errors on not-yet-ready video
+                }
+            }
+        };
+        const syncPlay = () => {
+            camVideo.play().catch(() => undefined);
+        };
+        const syncPause = () => {
+            if (!camVideo.paused) camVideo.pause();
+        };
+
+        mainVideo.addEventListener("play", syncPlay);
+        mainVideo.addEventListener("pause", syncPause);
+        mainVideo.addEventListener("seeked", syncTime);
+        mainVideo.addEventListener("timeupdate", syncTime);
+
+        return () => {
+            mainVideo.removeEventListener("play", syncPlay);
+            mainVideo.removeEventListener("pause", syncPause);
+            mainVideo.removeEventListener("seeked", syncTime);
+            mainVideo.removeEventListener("timeupdate", syncTime);
+        };
+    }, [videoRef, cameraUrl]);
 
     // Canvas elements drag & drop handlers
     useEffect(() => {
@@ -828,6 +898,94 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
         }*/
 
         ctx.restore();
+
+        // 10. Camera overlay — drawn in screen space AFTER zoom transform is unwound,
+        // so the camera stays fixed in the viewport during any zoom/pan animation.
+        await drawCameraOverlay(ctx, canvasWidth, canvasHeight);
+    };
+
+    // Draw the camera bubble in screen-space coordinates.
+    // Runs after the zoom ctx.restore() so position/size are unaffected by zoom.
+    const drawCameraOverlay = async (
+        ctx: CanvasRenderingContext2D,
+        canvasWidth: number,
+        canvasHeight: number
+    ) => {
+        const camVideo = cameraVideoRef.current;
+        const mainVideo = videoRef.current;
+        if (!camVideo || !cameraConfig || !cameraConfig.enabled) return;
+        if (camVideo.readyState < 2 || !camVideo.videoWidth || !camVideo.videoHeight) return;
+
+        // During export, main video seeks frame-by-frame; event-driven sync can leave the
+        // camera one frame behind. Nudge the camera to the main video's time and await
+        // the resulting seek so drawImage picks up the correct frame.
+        if (mainVideo && Math.abs(camVideo.currentTime - mainVideo.currentTime) > 0.05) {
+            try {
+                camVideo.currentTime = mainVideo.currentTime;
+                await new Promise<void>((resolve) => {
+                    const done = () => {
+                        camVideo.removeEventListener("seeked", done);
+                        resolve();
+                    };
+                    camVideo.addEventListener("seeked", done);
+                    // Guard against events that never fire (e.g., paused camera at end)
+                    setTimeout(() => {
+                        camVideo.removeEventListener("seeked", done);
+                        resolve();
+                    }, 150);
+                });
+            } catch {
+                // continue with whatever frame is available
+            }
+        }
+
+        const shortSide = Math.min(canvasWidth, canvasHeight);
+        const size = cameraConfig.size * shortSide;
+        if (size <= 0) return;
+
+        const centerX = cameraConfig.position.x * canvasWidth;
+        const centerY = cameraConfig.position.y * canvasHeight;
+        const drawX = centerX - size / 2;
+        const drawY = centerY - size / 2;
+
+        const radius =
+            cameraConfig.shape === "circle"
+                ? size / 2
+                : cameraConfig.shape === "rounded"
+                    ? size * 0.22
+                    : size * 0.04;
+
+        // Center-crop the camera frame to a square
+        const srcShort = Math.min(camVideo.videoWidth, camVideo.videoHeight);
+        const sx = (camVideo.videoWidth - srcShort) / 2;
+        const sy = (camVideo.videoHeight - srcShort) / 2;
+
+        ctx.save();
+
+        // Drop shadow to match preview styling
+        ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+        ctx.shadowBlur = shortSide * 0.02;
+        ctx.shadowOffsetY = shortSide * 0.008;
+
+        drawRoundedRect(ctx, drawX, drawY, size, size, radius);
+        ctx.fill();
+
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+
+        drawRoundedRect(ctx, drawX, drawY, size, size, radius);
+        ctx.clip();
+
+        if (cameraConfig.mirror) {
+            ctx.translate(drawX + size, drawY);
+            ctx.scale(-1, 1);
+            ctx.drawImage(camVideo, sx, sy, srcShort, srcShort, 0, 0, size, size);
+        } else {
+            ctx.drawImage(camVideo, sx, sy, srcShort, srcShort, drawX, drawY, size, size);
+        }
+
+        ctx.restore();
     };
 
     // Exponer métodos para exportación
@@ -847,16 +1005,19 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
             />
 
             {/* Preview visual - contenedor con tamaño dinámico según aspect ratio */}
-            <div className="relative shrink-0 overflow-hidden border border-white/20 rounded-xl transition-all duration-300"
+            <div
+                ref={previewContainerRef}
+                className="relative shrink-0 overflow-hidden border border-white/20 rounded-xl transition-all duration-300"
                 style={{
                     aspectRatio: getAspectRatioStyle(aspectRatio, customAspectRatio ?? undefined),
                     maxWidth: getMaxWidth(aspectRatio, customAspectRatio ?? undefined),
                     width: '100%',
                     height: 'auto',
                     maxHeight: '100%',
+                    containerType: 'size',
                 }}
                 onClick={(e) => {
-                    if (!(e.target as HTMLElement).closest('[data-canvas-element]') && onElementSelect) {
+                    if (!(e.target as HTMLElement).closest('[data-canvas-element]') && !(e.target as HTMLElement).closest('[data-camera-overlay]') && onElementSelect) {
                         onElementSelect(null);
                     }
                 }}
@@ -1070,7 +1231,90 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                         elementDragStart={elementDragStart}
                         layerZIndex={3}
                     />
-                    {/* Capa 4: Cursor overlay for preview */}
+                    {/* Capa 4: Camera overlay for preview — outside zoom transform, stays fixed */}
+                    {cameraUrl && cameraConfig?.enabled && (
+                        <div
+                            data-camera-overlay
+                            className="absolute inset-0 pointer-events-none"
+                            style={{ zIndex: 4 }}
+                        >
+                            <div
+                                onPointerDown={(e) => {
+                                    if (!onCameraConfigChange || !cameraConfig) return;
+                                    if (e.button !== 0) return;
+                                    const container = previewContainerRef.current;
+                                    if (!container) return;
+                                    const rect = container.getBoundingClientRect();
+                                    e.currentTarget.setPointerCapture(e.pointerId);
+                                    cameraDragRef.current = {
+                                        pointerId: e.pointerId,
+                                        startX: e.clientX,
+                                        startY: e.clientY,
+                                        initialX: cameraConfig.position.x,
+                                        initialY: cameraConfig.position.y,
+                                        rect,
+                                    };
+                                    setIsDraggingCamera(true);
+                                }}
+                                onPointerMove={(e) => {
+                                    const drag = cameraDragRef.current;
+                                    if (!drag || drag.pointerId !== e.pointerId || !onCameraConfigChange) return;
+                                    const dx = (e.clientX - drag.startX) / drag.rect.width;
+                                    const dy = (e.clientY - drag.startY) / drag.rect.height;
+                                    const nextX = Math.min(1, Math.max(0, drag.initialX + dx));
+                                    const nextY = Math.min(1, Math.max(0, drag.initialY + dy));
+                                    onCameraConfigChange({
+                                        position: { x: nextX, y: nextY },
+                                        corner: "custom",
+                                    });
+                                }}
+                                onPointerUp={(e) => {
+                                    const drag = cameraDragRef.current;
+                                    if (!drag || drag.pointerId !== e.pointerId) return;
+                                    e.currentTarget.releasePointerCapture(e.pointerId);
+                                    cameraDragRef.current = null;
+                                    setIsDraggingCamera(false);
+                                }}
+                                onPointerCancel={(e) => {
+                                    const drag = cameraDragRef.current;
+                                    if (!drag || drag.pointerId !== e.pointerId) return;
+                                    e.currentTarget.releasePointerCapture(e.pointerId);
+                                    cameraDragRef.current = null;
+                                    setIsDraggingCamera(false);
+                                }}
+                                className={`absolute pointer-events-auto select-none group ${
+                                    onCameraConfigChange ? (isDraggingCamera ? "cursor-grabbing" : "cursor-grab") : ""
+                                }`}
+                                style={{
+                                    width: `${cameraConfig.size * 100}cqmin`,
+                                    aspectRatio: "1 / 1",
+                                    left: `${cameraConfig.position.x * 100}%`,
+                                    top: `${cameraConfig.position.y * 100}%`,
+                                    transform: "translate(-50%, -50%)",
+                                    transition: isDraggingCamera ? "none" : "left 120ms ease, top 120ms ease",
+                                    touchAction: "none",
+                                }}
+                            >
+                                <video
+                                    ref={cameraVideoRef}
+                                    muted
+                                    playsInline
+                                    preload="auto"
+                                    className="size-full object-cover shadow-[0_8px_30px_rgba(0,0,0,0.45)] ring-1 ring-white/15"
+                                    style={{
+                                        borderRadius:
+                                            cameraConfig.shape === "circle"
+                                                ? "50%"
+                                                : cameraConfig.shape === "rounded"
+                                                    ? "22%"
+                                                    : "4%",
+                                        transform: cameraConfig.mirror ? "scaleX(-1)" : undefined,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                    {/* Capa 5: Cursor overlay for preview */}
                     {/* {cursorPosition && cursorSvgDataUrl && cursorConfig.visible && cursorConfig.style !== "none" && (
                         <div
                             className="absolute inset-0 pointer-events-none"
