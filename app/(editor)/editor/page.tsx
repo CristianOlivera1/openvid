@@ -19,6 +19,7 @@ import type { EditorState } from "@/types/editor-state.types";
 import { createInitialEditorState } from "@/types/editor-state.types";
 import { DEFAULT_MOCKUP_CONFIG, getMockupDefaultConfig } from "@/types/mockup.types";
 import type { CanvasElement } from "@/types/canvas-elements.types";
+import type { CameraConfig } from "@/types/camera.types";
 import { MOCKUPS } from "@/lib/mockup-data";
 import { gradientToCss, generateDefaultZoomFragments, createZoomFragment, detectVideoHasAudio } from "@/types";
 import "../../globals.css";
@@ -159,6 +160,14 @@ export default function Editor() {
     const [selectedAudioTrackId, setSelectedAudioTrackId] = useState<string | null>(null);
 
     const [isRecordedVideo, setIsRecordedVideo] = useState<boolean>(false);
+
+    // Camera overlay state (from recorded video's camera track, or post-record adjustments)
+    const [cameraConfig, setCameraConfig] = useState<CameraConfig | null>(null);
+    const [cameraUrl, setCameraUrl] = useState<string | null>(null);
+
+    const handleCameraConfigChange = useCallback((partial: Partial<CameraConfig>) => {
+        setCameraConfig((prev) => (prev ? { ...prev, ...partial } : prev));
+    }, []);
 
     // Videos library state
     const [newVideosCount, setNewVideosCount] = useState<number>(0);
@@ -308,6 +317,7 @@ export default function Editor() {
                 audioTracks,
                 muteOriginalAudio,
                 masterVolume,
+                cameraConfig,
             });
         }, 300);
         return () => {
@@ -320,7 +330,7 @@ export default function Editor() {
         roundedCorners, shadows, selectedImageUrl, backgroundColorConfig,
         aspectRatio, customDimensions, cropArea, trimRange,
         zoomFragments, mockupId, mockupConfig, canvasElements,
-        audioTracks, muteOriginalAudio, masterVolume,
+        audioTracks, muteOriginalAudio, masterVolume, cameraConfig,
         setEditorState
     ]);
 
@@ -345,6 +355,7 @@ export default function Editor() {
         setAudioTracks(editorState.audioTracks);
         setMuteOriginalAudio(editorState.muteOriginalAudio);
         setMasterVolume(editorState.masterVolume);
+        setCameraConfig(editorState.cameraConfig);
     }, [editorState]);
 
     // Handler para cambiar el mockup
@@ -1180,6 +1191,19 @@ export default function Editor() {
                             setIsRecordedVideo(true);
                         } else {
                             setIsRecordedVideo(false);
+                        }
+
+                        // Pick up camera track + config saved at record-time.
+                        // Only the recorded-video branch carries these fields.
+                        if ('cameraUrl' in videoToLoad && videoToLoad.cameraUrl) {
+                            setCameraUrl(videoToLoad.cameraUrl);
+                        } else {
+                            setCameraUrl(null);
+                        }
+                        if ('cameraConfig' in videoToLoad && videoToLoad.cameraConfig) {
+                            setCameraConfig(videoToLoad.cameraConfig);
+                        } else {
+                            setCameraConfig(null);
                         }
 
                         setTimeout(() => {
@@ -2063,6 +2087,9 @@ export default function Editor() {
                                         videosInTrackIds={videosInTrackIds}
                                         videosLibraryRefresh={videosLibraryRefresh}
                                         isVideoUploading={isUploading}
+                                        cameraUrl={cameraUrl}
+                                        cameraConfig={cameraConfig}
+                                        onCameraConfigChange={handleCameraConfigChange}
                                     />
                                 </Suspense>
                             </motion.div>
@@ -2138,6 +2165,9 @@ export default function Editor() {
                         selectedElementId={selectedElementId}
                         onElementUpdate={updateCanvasElement}
                         onElementSelect={selectCanvasElement}
+                        cameraUrl={cameraUrl}
+                        cameraConfig={cameraConfig}
+                        onCameraConfigChange={handleCameraConfigChange}
                         onEnded={() => {
                             const clips = videoClipsRef.current;
                             if (clips.length > 1) {
