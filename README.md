@@ -149,6 +149,6 @@ Abre [http://localhost:3000](http://localhost:3000)
 [Únete a Discord](https://discord.gg/f8KEyceS)
 
 ## Contribuidores
-<a href="https://github.com/CristianOlivera1/Login-Register-with-Autentication/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=CristianOlivera1/Login-Register-with-Autentication" />
+<a href="https://github.com/CristianOlivera1/openvid/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=CristianOlivera1/openvid" />
 </a>
