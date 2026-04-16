@@ -40,6 +40,7 @@ export function MacosGhostIdeMockup({
     const textColor = isDark ? "#cccccc" : "#333333";
     const searchBorder = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.15)";
     const searchBgBase = deriveSearchBg(frameColor);
+    const dotBorderColor = isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)";
 
     return (
         <div
@@ -66,9 +67,9 @@ export function MacosGhostIdeMockup({
             >
                 <div className="flex items-center" style={{ gap: `${menuGap * 2}px` }}>
                     <div className="flex items-center" style={{ gap: `${6 * headerScale}px` }}>
-                        <div style={{ width: `${12 * headerScale}px`, height: `${12 * headerScale}px`, borderRadius: "50%", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.2)" }} />
-                        <div style={{ width: `${12 * headerScale}px`, height: `${12 * headerScale}px`, borderRadius: "50%", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.2)" }} />
-                        <div style={{ width: `${12 * headerScale}px`, height: `${12 * headerScale}px`, borderRadius: "50%", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.2)" }} />
+                        <div style={{ width: `${12 * headerScale}px`, height: `${12 * headerScale}px`, borderRadius: "50%", backgroundColor: "transparent", border: `1px solid ${dotBorderColor}` }} />
+                        <div style={{ width: `${12 * headerScale}px`, height: `${12 * headerScale}px`, borderRadius: "50%", backgroundColor: "transparent", border: `1px solid ${dotBorderColor}` }} />
+                        <div style={{ width: `${12 * headerScale}px`, height: `${12 * headerScale}px`, borderRadius: "50%", backgroundColor: "transparent", border: `1px solid ${dotBorderColor}` }} />
                     </div>
 
                     <div className="flex items-center" style={{ fontSize: `${menuFontSize}px`, color: isDark ? "#999999" : "#555555" }}>

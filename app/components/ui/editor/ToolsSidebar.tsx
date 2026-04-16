@@ -245,11 +245,11 @@ export function ToolsSidebar({
                         isActive={activeTool === "audio"}
                         onClick={() => onToolChange("audio")}
                         ref={audioToolRef}
-                        // popover={{
-                        //     title: "Pistas y Efectos",
-                        //     description: "Sincroniza pistas de música de fondo o efectos de sonido (clics, notificaciones) para darle vida a tus videos.",
-                        //     videoSrc: "/videos/demo-audio.mp4"
-                        // }}
+                        popover={{
+                            title: "Pistas y Efectos",
+                            description: "Sincroniza pistas de música de fondo o efectos de sonido",
+                            videoSrc: "/videos/preview-audio.mp4"
+                        }}
                     />
                     <SidebarTool
                         icon="iconamoon:zoom-in-bold"
@@ -257,11 +257,11 @@ export function ToolsSidebar({
                         isActive={activeTool === "zoom"}
                         onClick={() => onToolChange("zoom")}
                         ref={zoomToolRef}
-                        // popover={{
-                        //     title: "Zoom Dinámico",
-                        //     description: "Crea acercamientos fluidos hacia partes específicas de la pantalla para guiar la atención del espectador.",
-                        //     videoSrc: "/videos/demo-zoom.mp4"
-                        // }}
+                        popover={{
+                            title: "Zoom Dinámico",
+                            description: "Crea acercamientos fluidos hacia partes específicas de la pantalla para guiar la atención del espectador.",
+                            videoSrc: "/videos/preview-zoom.mp4"
+                        }}
                     />
                     <SidebarTool
                         icon="solar:videocamera-record-bold-duotone"
@@ -269,11 +269,11 @@ export function ToolsSidebar({
                         isActive={activeTool === "camera"}
                         onClick={() => onToolChange("camera")}
                         ref={cameraToolRef}
-                        // popover={{
-                        //     title: "Cámara en pantalla",
-                        //     description: "Superpón la grabación de tu webcam con recortes circulares, marcos elegantes y fondos eliminados por IA.",
-                        //     videoSrc: "/videos/demo-camara.mp4"
-                        // }}
+                        popover={{
+                            title: "Cámara en pantalla",
+                            description: "Superpón la grabación de tu webcam con recortes circulares",
+                            videoSrc: "/videos/preview-camera.mp4"
+                        }}
                     />
                     <SidebarTool
                         icon="solar:cursor-bold-duotone"

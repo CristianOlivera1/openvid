@@ -1,12 +1,10 @@
 "use client";
 
-import { useRef, useEffect, useImperativeHandle, forwardRef, useMemo, useState, useCallback } from "react";
+import { useRef, useEffect, useImperativeHandle, forwardRef, useMemo, useState } from "react";
 import type { VideoCanvasHandle, VideoCanvasProps, VideoThumbnail } from "@/types";
-import type { ImageElement, SvgElement, CanvasElement } from "@/types/canvas-elements.types";
+import type { ImageElement, SvgElement } from "@/types/canvas-elements.types";
 import { getCameraLayout } from "@/types/camera.types";
 import { ASPECT_RATIO_DIMENSIONS } from "@/types";
-// import { interpolateCursorPosition, DEFAULT_CURSOR_CONFIG, EMPTY_CURSOR_DATA } from "@/types/cursor.types";
-// import type { CursorKeyframe } from "@/types/cursor.types";
 import { getWallpaperUrl } from "@/lib/wallpaper.utils";
 import { drawRoundedRect, drawRoundedRectBottomOnly, calculateScaledPadding, applyCanvasBackground, getAspectRatioStyle, getMaxWidth, Corner, getCornerStyle, getNearestCorner } from "@/lib/canvas.utils";
 import { drawMockupToCanvas } from "@/lib/mockup-canvas.utils";
@@ -16,8 +14,7 @@ import PlaceholderEditor from "../PlaceholderEditor";
 import { MockupWrapper } from "./mockups/MockupWrapper";
 import { DEFAULT_MOCKUP_CONFIG } from "@/types/mockup.types";
 import { calculateSmoothZoom } from "@/lib/canvas.utils";
-import { SVG_COMPONENTS, getSvgDataUrl } from "@/components/canvas-svg";
-// import { getCursorSvgDataUrl } from "@/components/cursor-svg";
+import { getSvgDataUrl } from "@/components/canvas-svg";
 import { VIDEO_Z_INDEX, BOTTOM_ONLY_RADIUS_MOCKUPS, SELF_SHADOWING_MOCKUPS } from "@/lib/constants";
 import { RotationHandleIcon } from "@/components/ui/RotationHandleIcon";
 import { CanvasElementsLayer } from "./CanvasElementsLayer";
@@ -56,10 +53,6 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     selectedElementId = null,
     onElementUpdate,
     onElementSelect,
-    // Cursor props
-    // cursorConfig = DEFAULT_CURSOR_CONFIG,
-    // cursorData = EMPTY_CURSOR_DATA,
-    // Camera overlay props
     cameraUrl = null,
     cameraConfig = null,
     onCameraConfigChange,
@@ -80,7 +73,6 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     }, [zoomFragments, currentTime]);
 
     // Calculate zoom transform for visual preview using 3-phase system
-    // Phase 1: Entry (zoom in), Phase 2: Hold with optional movement, Phase 3: Exit (zoom out)
     const zoomTransform = useMemo(() => {
         // No active fragment - smooth exit to base scale
         if (!activeZoomFragment) {
@@ -108,7 +100,6 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
         const translateY = (50 - phaseState.focusY) * (phaseState.scale - 1) * 2;
 
         // During hold phase with movement, reduce transition to avoid jarring
-        // CSS transitions should only apply to scale (entry/exit), not translate during movement
         const isMoving = activeZoomFragment.movementEnabled && phaseState.phase === 'hold';
         const transitionMs = isMoving ? 50 : speedToTransitionMs(activeZoomFragment.speed);
 
@@ -124,34 +115,6 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
         };
     }, [activeZoomFragment, zoomFragments, currentTime]);
 
-    // Calculate current cursor position from cursor data
-    /*const cursorPosition = useMemo<CursorKeyframe | null>(() => {
-        if (!cursorConfig.visible || cursorConfig.style === "none" || !cursorData.hasCursorData) {
-            return null;
-        }
-        return interpolateCursorPosition(cursorData.keyframes, currentTime, cursorConfig.smoothing);
-    }, [cursorConfig.visible, cursorConfig.style, cursorConfig.smoothing, cursorData.hasCursorData, cursorData.keyframes, currentTime]);*/
-
-    // Get cursor SVG data URL for rendering
-    /*const cursorSvgDataUrl = useMemo(() => {
-        if (!cursorPosition || cursorConfig.style === "none") return null;
-        return getCursorSvgDataUrl(cursorConfig.style, cursorPosition.state, cursorConfig.color, cursorConfig.size);
-    }, [cursorPosition, cursorConfig.style, cursorConfig.color, cursorConfig.size]);*/
-
-    // Preload cursor image for canvas rendering
-    /* const cursorImageRef = useRef<HTMLImageElement | null>(null);
-     useEffect(() => {
-         if (cursorSvgDataUrl) {
-             const img = new Image();
-             img.src = cursorSvgDataUrl;
-             img.onload = () => {
-                 cursorImageRef.current = img;
-             };
-         } else {
-             cursorImageRef.current = null;
-         }
-     }, [cursorSvgDataUrl]);*/
-
     // Determinar qué background mostrar basado en el tab activo
     const shouldShowUnsplashOverride = backgroundTab === "wallpaper" && unsplashOverrideUrl !== "";
     const shouldShowWallpaper = backgroundTab === "wallpaper" && selectedWallpaper >= 0 && !shouldShowUnsplashOverride;
@@ -165,7 +128,6 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
 
     // Calcular dimensiones de exportación según aspect ratio
     const exportDimensions = useMemo(() => {
-        // For auto and custom, use the actual video dimensions if available
         if ((aspectRatio === "auto" || aspectRatio === "custom") && customAspectRatio) {
             return { width: customAspectRatio.width, height: customAspectRatio.height };
         }
@@ -180,23 +142,23 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     // Set initial video src when videoUrl changes (initial load only — transitions manage src imperatively)
     const lastSetVideoUrlRef = useRef<string | null>(null);
     const preservedVideoStateRef = useRef<{ time: number; playing: boolean } | null>(null);
-    
+
     // Reset lastSetVideoUrlRef when mockupId changes to force src re-assignment on remount
     useEffect(() => {
         lastSetVideoUrlRef.current = null;
     }, [mockupId]);
-    
+
     useEffect(() => {
         if (videoRef.current && videoUrl) {
             // Always set src if video element has no src, src is empty, or we just changed mockup
             const videoSrc = videoRef.current.src;
             const needsSrc = !videoSrc || videoSrc === '' || videoSrc === window.location.href;
             const isNewUrl = videoUrl !== lastSetVideoUrlRef.current;
-            
+
             if (needsSrc || isNewUrl) {
                 videoRef.current.src = videoUrl;
                 lastSetVideoUrlRef.current = videoUrl;
-                
+
                 // Restore preserved state after src is set
                 if (preservedVideoStateRef.current) {
                     const { time, playing } = preservedVideoStateRef.current;
@@ -258,8 +220,6 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     const elementImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
     // SVG element image cache keyed by "svgId-color" — avoids new Image() per frame
     const svgImageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
-    // Cursor image cache keyed by data URL — avoids new Image() + decode per frame
-    // const cursorImageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
     // Actualizar canvas dimensions cuando cambia el aspect ratio
     useEffect(() => {
@@ -284,12 +244,11 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
         }
     }, [shouldShowWallpaper, wallpaperUrl]);
 
-    // Precargar imagen custom para el canvas (Image tab o Unsplash override en wallpaper tab)
     const imageUrlToLoad = shouldShowCustomImage ? selectedImageUrl : shouldShowUnsplashOverride ? unsplashOverrideUrl : null;
     useEffect(() => {
         if (imageUrlToLoad) {
             const img = new Image();
-            img.crossOrigin = "anonymous"; // Prevenir problemas de CORS al exportar
+            img.crossOrigin = "anonymous";
             img.src = imageUrlToLoad;
             img.onload = () => {
                 customImageRef.current = img;
@@ -309,20 +268,18 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                 .map(el => el.imagePath)
         );
 
-        // Remove images not in use anymore
         for (const path of loadedPaths) {
             if (!currentPaths.has(path)) {
                 cache.delete(path);
             }
         }
 
-        // Load new images with enhanced error handling
         for (const element of canvasElements) {
             if (element.type === "image") {
                 const imageElement = element as ImageElement;
                 if (!cache.has(imageElement.imagePath)) {
                     const img = new Image();
-                    img.crossOrigin = "anonymous"; // Prevenir problemas de CORS al exportar
+                    img.crossOrigin = "anonymous";
 
                     img.onload = () => {
                         cache.set(imageElement.imagePath, img);
@@ -856,94 +813,11 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
         // 8. Render elements ABOVE video (zIndex >= VIDEO_Z_INDEX)
         await renderCanvasElements(ctx, canvasElements, canvasWidth, canvasHeight, false);
 
-        // 9. Render cursor overlay if enabled and data available
-        /* if (cursorConfig.visible && cursorConfig.style !== "none" && cursorData.hasCursorData) {
-            const frameTime = video.currentTime;
-            const cursorPos = interpolateCursorPosition(cursorData.keyframes, frameTime, cursorConfig.smoothing);
-
-            if (cursorPos) {
-                // Get cursor image from cache
-                const cursorDataUrl = getCursorSvgDataUrl(cursorConfig.style, cursorPos.state, cursorConfig.color, cursorConfig.size);
-                if (cursorDataUrl) {
-                    let cursorImg = cursorImageCacheRef.current.get(cursorDataUrl);
-                    if (!cursorImg) {
-                        cursorImg = new Image();
-                        cursorImageCacheRef.current.set(cursorDataUrl, cursorImg);
-                        cursorImg.src = cursorDataUrl;
-                        await new Promise<void>((resolve) => {
-                            if (cursorImg!.complete) resolve();
-                            else { cursorImg!.onload = () => resolve(); cursorImg!.onerror = () => resolve(); }
-                        });
-                    } else if (!cursorImg.complete) {
-                        await new Promise<void>((resolve) => {
-                            cursorImg!.onload = () => resolve();
-                            cursorImg!.onerror = () => resolve();
-                            setTimeout(resolve, 500);
-                        });
-                    }
-
-                    // Calculate cursor position relative to the video area
-                    // The cursor positions stored are percentages of the video dimensions
-                    const cursorX = videoX + (cursorPos.x / 100) * videoWidth;
-                    const cursorY = videoY + (cursorPos.y / 100) * videoHeight;
-
-                    // Scale cursor size based on canvas dimensions
-                    const cursorScale = canvasWidth / 1920; // Reference 1920px
-                    const scaledCursorSize = cursorConfig.size * cursorScale;
-
-                    ctx.save();
-                    ctx.globalAlpha = 1;
-
-                    // Draw click effect if clicking
-                    if (cursorPos.clicking && cursorConfig.clickEffect !== "none") {
-                        ctx.save();
-                        const effectSize = scaledCursorSize * 2;
-
-                        if (cursorConfig.clickEffect === "ripple") {
-                            // Ripple effect - expanding circles
-                            ctx.beginPath();
-                            ctx.arc(cursorX, cursorY, effectSize, 0, Math.PI * 2);
-                            ctx.strokeStyle = cursorConfig.clickEffectColor;
-                            ctx.lineWidth = 3 * cursorScale;
-                            ctx.globalAlpha = 0.5;
-                            ctx.stroke();
-                        } else if (cursorConfig.clickEffect === "ring") {
-                            // Ring effect - solid ring
-                            ctx.beginPath();
-                            ctx.arc(cursorX, cursorY, effectSize * 0.8, 0, Math.PI * 2);
-                            ctx.strokeStyle = cursorConfig.clickEffectColor;
-                            ctx.lineWidth = 4 * cursorScale;
-                            ctx.globalAlpha = 0.7;
-                            ctx.stroke();
-                        }
-
-                        ctx.restore();
-                    }
-
-                    // Draw cursor image
-                    // Cursor hotspot is typically at top-left for arrow cursors
-                    ctx.drawImage(
-                        cursorImg,
-                        cursorX,
-                        cursorY,
-                        scaledCursorSize,
-                        scaledCursorSize
-                    );
-
-                    ctx.restore();
-                }
-            }
-        }*/
-
         ctx.restore();
 
-        // 10. Camera overlay — drawn in screen space AFTER zoom transform is unwound,
-        // so the camera stays fixed in the viewport during any zoom/pan animation.
         await drawCameraOverlay(ctx, canvasWidth, canvasHeight);
     };
 
-    // Draw the camera bubble in screen-space coordinates.
-    // Runs after the zoom ctx.restore() so position/size are unaffected by zoom.
     const drawCameraOverlay = async (
         ctx: CanvasRenderingContext2D,
         canvasWidth: number,
@@ -951,69 +825,66 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     ) => {
         const camVideo = cameraVideoRef.current;
         const mainVideo = videoRef.current;
-        if (!camVideo || !cameraConfig || !cameraConfig.enabled) return;
-        if (camVideo.readyState < 2 || !camVideo.videoWidth || !camVideo.videoHeight) return;
 
-        // Guard against camera video being shorter than main video
+        if (!camVideo || !cameraConfig || !cameraConfig.enabled) return;
+        if (!camVideo.videoWidth || !camVideo.videoHeight) return;
+
         if (mainVideo && camVideo.duration > 0 && mainVideo.currentTime > camVideo.duration - 0.1) {
-            return; // Skip drawing camera if we're beyond its duration
+            return;
         }
 
-        // During export, main video seeks frame-by-frame; event-driven sync can leave the
-        // camera one frame behind. Nudge the camera to the main video's time and await
-        // the resulting seek so drawImage picks up the correct frame.
-        if (mainVideo && Math.abs(camVideo.currentTime - mainVideo.currentTime) > 0.05) {
+        if (mainVideo && camVideo.paused && Math.abs(camVideo.currentTime - mainVideo.currentTime) > 0.05) {
             try {
-                // Clamp camera seek to its actual duration
                 const targetTime = Math.min(mainVideo.currentTime, camVideo.duration - 0.05);
                 camVideo.currentTime = targetTime;
+
                 await new Promise<void>((resolve) => {
-                    const done = () => {
-                        camVideo.removeEventListener("seeked", done);
+                    const timeoutId = setTimeout(() => {
+                        camVideo.removeEventListener("seeked", onSeeked);
                         resolve();
+                    }, 250);
+
+                    const onSeeked = () => {
+                        camVideo.removeEventListener("seeked", onSeeked);
+
+                        const checkReady = setInterval(() => {
+                            if (camVideo.readyState >= 3) {
+                                clearInterval(checkReady);
+                                clearTimeout(timeoutId);
+                                resolve();
+                            }
+                        }, 10);
                     };
-                    camVideo.addEventListener("seeked", done);
-                    // Guard against events that never fire (e.g., paused camera at end)
-                    setTimeout(() => {
-                        camVideo.removeEventListener("seeked", done);
-                        resolve();
-                    }, 100);
+
+                    camVideo.addEventListener("seeked", onSeeked);
                 });
             } catch {
-                // continue with whatever frame is available
             }
         }
-
-        // Double-check readyState after async seek
-        if (camVideo.readyState < 2) return;
-
         const { size, left: drawX, top: drawY } = getCameraLayout(
             cameraConfig,
             canvasWidth,
             canvasHeight
         );
+
         if (size <= 0) return;
+
         const shortSide = Math.min(canvasWidth, canvasHeight);
 
-        // Escala el radio dinámicamente (igual que en preview)
-        const sizePercent = cameraConfig.size * 100; // 0.18 → 18
+        const sizePercent = cameraConfig.size * 100;
         const sizeMultiplier = 0.5 + (sizePercent - 20) / 40;
 
-        // Center-crop the camera frame to a square
         const srcShort = Math.min(camVideo.videoWidth, camVideo.videoHeight);
         const sx = (camVideo.videoWidth - srcShort) / 2;
         const sy = (camVideo.videoHeight - srcShort) / 2;
 
         ctx.save();
 
-        // Drop shadow to match preview styling
         ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
         ctx.shadowBlur = shortSide * 0.02;
         ctx.shadowOffsetY = shortSide * 0.008;
 
-        // Create clipping path based on shape
         if (cameraConfig.shape === "circle") {
-            // Perfect circle using arc
             const centerX = drawX + size / 2;
             const centerY = drawY + size / 2;
             const radius = size / 2;
@@ -1030,10 +901,9 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
             ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
             ctx.clip();
         } else {
-            // Squircle or square with rounded corners
             const radius =
                 cameraConfig.shape === "squircle"
-                    ? Math.round(20 * sizeMultiplier)
+                    ? Math.round(75 * sizeMultiplier)
                     : Math.round(6 * sizeMultiplier);
 
             drawRoundedRect(ctx, drawX, drawY, size, size, radius);
@@ -1047,18 +917,20 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
             ctx.clip();
         }
 
-        if (cameraConfig.mirror) {
-            ctx.translate(drawX + size, drawY);
-            ctx.scale(-1, 1);
-            ctx.drawImage(camVideo, sx, sy, srcShort, srcShort, 0, 0, size, size);
-        } else {
-            ctx.drawImage(camVideo, sx, sy, srcShort, srcShort, drawX, drawY, size, size);
+        try {
+            if (cameraConfig.mirror) {
+                ctx.translate(drawX + size, drawY);
+                ctx.scale(-1, 1);
+                ctx.drawImage(camVideo, sx, sy, srcShort, srcShort, 0, 0, size, size);
+            } else {
+                ctx.drawImage(camVideo, sx, sy, srcShort, srcShort, drawX, drawY, size, size);
+            }
+        } catch (e) {
         }
 
         ctx.restore();
     };
 
-    // Exponer métodos para exportación
     useImperativeHandle(ref, () => ({
         getExportCanvas: () => exportCanvasRef.current,
         drawFrame,
@@ -1272,10 +1144,11 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                                     )}
                                                 </div>
                                             ) : (
-                                                <div className="w-full h-full aspect-video min-w-75 bg-[#1E1E1E] border border-white/10 flex flex-col overflow-hidden">                                    <PlaceholderEditor
-                                                    onVideoUpload={onVideoUpload}
-                                                    isUploading={isUploading}
-                                                />
+                                                <div className="w-full h-full aspect-video min-w-75 bg-[#1E1E1E] border border-white/10 flex flex-col overflow-hidden">
+                                                    <PlaceholderEditor
+                                                        onVideoUpload={onVideoUpload}
+                                                        isUploading={isUploading}
+                                                    />
                                                 </div>
                                             )}
                                         </MockupWrapper>
@@ -1304,12 +1177,9 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                     />
                     {/* Capa 4: Camera overlay for preview — outside zoom transform, stays fixed */}
                     {cameraUrl && cameraConfig?.enabled && (
-                        <div
-                            data-camera-overlay
-                            className="absolute inset-0 pointer-events-none"
-                            style={{ zIndex: 4 }}
-                        >
+                        <div data-camera-overlay className="absolute inset-0 pointer-events-none" style={{ zIndex: 4 }}>
                             <div
+                                tabIndex={0}
                                 onClick={() => {
                                     if (onCameraClick) {
                                         onCameraClick();
@@ -1358,7 +1228,7 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                     cameraDragRef.current = null;
                                     setIsDraggingCamera(false);
                                 }}
-                                className={`absolute pointer-events-auto select-none group ${onCameraConfigChange ? (isDraggingCamera ? "cursor-grabbing" : "cursor-grab") : ""
+                                className={`absolute pointer-events-auto select-none outline-none group ${onCameraConfigChange ? (isDraggingCamera ? "cursor-grabbing" : "cursor-grab") : ""
                                     }`}
                                 style={{
                                     width: `${cameraConfig.size * 100}cqmin`,
@@ -1374,8 +1244,7 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                     muted
                                     playsInline
                                     preload="auto"
-                                    className={`size-full object-cover shadow-[0_8px_30px_rgba(0,0,0,0.45)] ring-1 ring-white/15 ${cameraConfig.shape === "squircle" ? "squircle-element-camera" : ""
-                                        }`}
+                                    className={`size-full object-cover shadow-[0_8px_30px_rgba(0,0,0,0.45)] transition-shadow duration-200 ring-1 ring-white/15 group-hover:ring-1 group-hover:ring-white group-focus:ring-1 group-focus:ring-white ${cameraConfig.shape === "squircle" ? "squircle-element-camera" : ""}`}
                                     style={{
                                         borderRadius:
                                             cameraConfig.shape === "circle"
@@ -1389,47 +1258,6 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                             </div>
                         </div>
                     )}
-                    {/* Capa 5: Cursor overlay for preview */}
-                    {/* {cursorPosition && cursorSvgDataUrl && cursorConfig.visible && cursorConfig.style !== "none" && (
-                        <div
-                            className="absolute inset-0 pointer-events-none"
-                            style={{
-                                zIndex: 4,
-                                padding: `${padding * 0.5}%`,
-                            }}
-                        >
-                            <div className="relative w-full h-full">
-                                {cursorPosition.clicking && cursorConfig.clickEffect !== "none" && (
-                                    <div
-                                        className="absolute rounded-full animate-ping"
-                                        style={{
-                                            left: `${cursorPosition.x}%`,
-                                            top: `${cursorPosition.y}%`,
-                                            width: cursorConfig.size * 2,
-                                            height: cursorConfig.size * 2,
-                                            transform: 'translate(-50%, -50%)',
-                                            backgroundColor: cursorConfig.clickEffectColor,
-                                            opacity: cursorConfig.clickEffect === "ripple" ? 0.3 : 0.5,
-                                        }}
-                                    />
-                                )}
-                                <img
-                                    src={cursorSvgDataUrl}
-                                    alt="cursor"
-                                    className="absolute pointer-events-none"
-                                    style={{
-                                        left: `${cursorPosition.x}%`,
-                                        top: `${cursorPosition.y}%`,
-                                        width: cursorConfig.size,
-                                        height: cursorConfig.size,
-                                        // Cursor hotspot at top-left for arrow cursors
-                                        transform: 'translate(0, 0)',
-                                        transition: cursorConfig.smoothing > 50 ? `all ${cursorConfig.smoothing}ms ease-out` : 'none',
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    )} */}
                 </div>
             </div>
         </div>
