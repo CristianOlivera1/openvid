@@ -1,25 +1,21 @@
 export interface AudioTrack {
     id: string;
-    audioId: string; // Reference to uploaded audio file
+    audioId: string;
     name: string;
-    startTime: number; // Start position in video timeline (seconds)
-    duration: number; // Duration of the audio clip (seconds)
-    volume: number; // 0 to 1
-    loop: boolean; // Whether to loop if audio is shorter than video
-    trimStart?: number;  // ← ¿existe este campo?
+    startTime: number;
+    duration: number;
+    volume: number;
+    loop: boolean;
+    trimStart?: number; 
 }
 
-/**
- * Uploaded Audio File
- * Represents an audio file available in the library
- */
 export interface UploadedAudio {
     id: string;
     name: string;
-    url: string; // Blob URL or uploaded URL
+    url: string;
     duration: number;
-    fileSize: number; // In bytes
-    mimeType: string; // e.g., "audio/mp3", "audio/wav"
+    fileSize: number;
+    mimeType: string;
 }
 
 export interface AudioConfig {

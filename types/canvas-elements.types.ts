@@ -86,3 +86,14 @@ export const FONT_WEIGHTS = [
     { key: "medium", label: "Medium" },
     { key: "bold", label: "Bold" },
 ] as const;
+
+export interface UploadedImage {
+    id: string;
+    name: string;
+    dataUrl: string;
+    uploadedAt: number;
+}
+
+export const STORAGE_KEY = "openvid-uploaded-images";
+export const MAX_FILE_SIZE = 5 * 1024 * 1024;
+export const ACCEPTED_FORMATS = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];

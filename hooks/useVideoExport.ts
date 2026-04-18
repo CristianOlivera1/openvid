@@ -283,9 +283,10 @@ async function exportWithFFmpegWebM(
 
     setProgress({ status: "preparing", progress: 3, message: "Cargando motor WebM..." });
 
+    const ffmpegBase = `${window.location.origin}/ffmpeg`;
     await ffmpeg.load({
-        coreURL: await toBlobURL("/ffmpeg/ffmpeg-core.js", "text/javascript"),
-        wasmURL: await toBlobURL("/ffmpeg/ffmpeg-core.wasm", "application/wasm"),
+        coreURL: await toBlobURL(`${ffmpegBase}/ffmpeg-core.js`, "text/javascript"),
+        wasmURL: await toBlobURL(`${ffmpegBase}/ffmpeg-core.wasm`, "application/wasm"),
     });
 
     video.pause();
@@ -563,10 +564,10 @@ async function exportWithMediabunnyAndAudio(
     await output.start();
 
     video.pause();
-    
+
     // For multi-clip export, track the current active clip ID
     let currentClipId: string | null = null;
-    
+
     // Initial setup based on whether we have multiple clips
     if (hasMultipleClips && clips.length > 0) {
         // Sort clips by start time
@@ -588,7 +589,7 @@ async function exportWithMediabunnyAndAudio(
     } else {
         video.currentTime = trimStart;
     }
-    
+
     await waitForVideoFrame(video);
 
     for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
@@ -602,10 +603,10 @@ async function exportWithMediabunnyAndAudio(
         // Multi-clip: determine which clip we're in and seek to correct position
         if (hasMultipleClips && clipBlobs) {
             const activeClipInfo = getActiveClipAtTime(clips, timelineTime);
-            
+
             if (activeClipInfo) {
                 const { clip, clipTime } = activeClipInfo;
-                
+
                 // Check if we need to switch video source
                 if (clip.id !== currentClipId) {
                     const newBlob = clipBlobs.get(clip.libraryVideoId);
@@ -620,7 +621,7 @@ async function exportWithMediabunnyAndAudio(
                         currentClipId = clip.id;
                     }
                 }
-                
+
                 // Seek to correct position within the clip's video
                 video.currentTime = clipTime;
                 await waitForVideoFrame(video);
@@ -644,7 +645,7 @@ async function exportWithMediabunnyAndAudio(
             setProgress({
                 status: "encoding",
                 progress,
-                message: hasMultipleClips 
+                message: hasMultipleClips
                     ? `Codificando clips ${frameIndex + 1}/${totalFrames}...`
                     : `Codificando video ${frameIndex + 1}/${totalFrames}...`,
             });
@@ -707,7 +708,8 @@ async function exportWithMediabunnyAndAudio(
         });
 
         const ffmpeg = new FFmpeg();
-        const baseURL = "/ffmpeg";
+        const baseURL = `${window.location.origin}/ffmpeg`;
+
         await ffmpeg.load({
             coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
             wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
@@ -936,8 +938,8 @@ async function exportWithFFmpegGif(
 
         setProgress({ status: "preparing", progress: 3, message: "Cargando motor de exportación GIF..." });
 
-        // toBlobURL de @ffmpeg/util descarga cada archivo como blob local
-        const baseURL = "/ffmpeg";
+        const baseURL = `${window.location.origin}/ffmpeg`;
+
         await ffmpeg.load({
             coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
             wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),

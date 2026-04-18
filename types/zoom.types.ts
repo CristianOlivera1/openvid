@@ -1,3 +1,5 @@
+import { VideoThumbnail } from "./editor.types";
+
 export interface ZoomFragment {
     id: string;
     startTime: number;      // Tiempo de inicio del fragmento (segundos)
@@ -26,6 +28,18 @@ export interface ZoomFragment {
 export interface ZoomState {
     fragments: ZoomFragment[];
     selectedFragmentId: string | null;
+}
+
+export interface ZoomFragmentEditorProps {
+    fragment: ZoomFragment;
+    videoUrl: string | null;
+    videoThumbnail?: string | null;
+    currentTime?: number;
+    getThumbnailForTime?: (time: number) => VideoThumbnail | null;
+    videoDimensions?: { width: number; height: number } | null;
+    onBack: () => void;
+    onDelete: () => void;
+    onUpdate: (updates: Partial<ZoomFragment>) => void;
 }
 
 // Smoother easing for professional zoom feel (quart curves)

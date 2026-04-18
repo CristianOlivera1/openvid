@@ -106,16 +106,12 @@ export const CAMERA_SHAPES: Array<{ id: CameraShape; label: string; icon: string
     { id: "square", label: "Cuadrado", icon: "material-symbols:square-rounded" },
 ];
 
-// Storage key for persisting recording setup
 export const RECORDING_SETUP_STORAGE_KEY = "openvid:recordingSetup";
 
-// Valid camera shapes for validation
 export const VALID_CAMERA_SHAPES: CameraShape[] = ["squircle", "circle", "square"];
 
-// Valid camera corners for validation
 export const VALID_CAMERA_CORNERS: CameraCorner[] = ["top-left", "top-right", "bottom-left", "bottom-right", "custom"];
 
-// Corner position buttons with labels and icons
 export const CORNER_BUTTONS: Array<{ id: Exclude<CameraCorner, "custom">; label: string; icon: string }> = [
     { id: "top-left", label: "Arriba izq.", icon: "solar:arrow-up-bold" },
     { id: "top-right", label: "Arriba der.", icon: "solar:arrow-up-bold" },

@@ -4,17 +4,17 @@ export type GradientDirection =
     | "to-b" | "to-bl" | "to-l" | "to-tl";
 
 export interface ColorStop {
-    id?: string; // Unique identifier for drag-and-drop
+    id?: string;
     color: string;
-    position: number; // 0-100
+    position: number;
 }
 
 export interface GradientConfig {
     type: GradientType;
     direction: GradientDirection;
-    angle?: number; // 0-360 para linear y conic
-    originX?: number; // 0-100 para conic (posición horizontal)
-    originY?: number; // 0-100 para conic (posición vertical)
+    angle?: number;
+    originX?: number;
+    originY?: number;
     stops: ColorStop[];
 }
 
@@ -98,7 +98,8 @@ const SHARED_PALETTES: ColorStop[][] = [
     [{ color: "#ff0844", position: 0 }, { color: "#ffb199", position: 100 }],
     [{ color: "#c31432", position: 0 }, { color: "#240b36", position: 100 }],
     [{ color: "#f857a6", position: 0 }, { color: "#ff5858", position: 100 }],
-    [{ color: "#654ea3", position: 0 }, { color: "#eaafc8", position: 100 }]
+    [{ color: "#654ea3", position: 0 }, { color: "#eaafc8", position: 100 }],
+    [{ color: "#F8FAFC", position: 0 }, { color: "#F1F5F9", position: 50 }, { color: "#36383A", position: 100 }]
 ];
 
 export const PRESET_LINEAR_GRADIENTS: GradientConfig[] = SHARED_PALETTES.map(stops => ({
@@ -135,7 +136,8 @@ const CONIC_METADATA = [
     { angle: 180, originX: 50, originY: 110 }, { angle: 45, originX: -10, originY: -10 },
     { angle: 90, originX: 100, originY: 50 }, { angle: 270, originX: 0, originY: 50 },
     { angle: 45, originX: 50, originY: 50 }, { angle: 135, originX: 50, originY: 50 },
-    { angle: 225, originX: 50, originY: 50 }, { angle: 315, originX: 50, originY: 50 }
+    { angle: 225, originX: 50, originY: 50 }, { angle: 315, originX: 50, originY: 50 },
+    { angle: 0, originX: 50, originY: 50 }
 ];
 
 export const PRESET_CONIC_GRADIENTS: GradientConfig[] = CONIC_METADATA.map((meta, i) => ({

@@ -29,34 +29,10 @@ interface CategoryConfig {
 }
 
 const CATEGORY_CONFIGS: CategoryConfig[] = [
-    {
-        id: 'desktop',
-        label: 'Escritorio',
-        icon: 'heroicons:computer-desktop-solid',
-        primary: true,
-        count: 66,
-    },
-    {
-        id: 'gradient',
-        label: 'Gradientes',
-        icon: 'solar:mirror-left-bold',
-        primary: true,
-        count: 90,
-    },
-    {
-        id: 'pattern',
-        label: 'Patrones',
-        icon: 'solar:palette-round-bold',
-        primary: false,
-        count: 49,
-    },
-    {
-        id: 'minimal',
-        label: 'Minimal',
-        icon: 'solar:sun-2-bold',
-        primary: false,
-        count: 65,
-    },
+  { id: 'desktop', label: 'desktop', icon: 'heroicons:computer-desktop-solid', primary: true, count: 66 },
+  { id: 'gradient', label: 'gradient', icon: 'solar:mirror-left-bold', primary: true, count: 90 },
+  { id: 'pattern', label: 'pattern', icon: 'solar:palette-round-bold', primary: false, count: 49 },
+  { id: 'minimal', label: 'minimal', icon: 'solar:sun-2-bold', primary: false, count: 65 },
 ];
 
 let globalIndex = 0;
@@ -82,12 +58,10 @@ export const WALLPAPER_CATEGORIES: WallpaperCategory[] = CATEGORY_CONFIGS.map(co
     };
 });
 
-/** Mapa plano index → WallpaperItem para búsquedas rápidas */
 export const WALLPAPER_MAP = new Map<number, WallpaperItem>(
     WALLPAPER_CATEGORIES.flatMap(cat => cat.items).map(item => [item.index, item])
 );
 
-/** Devuelve las URLs a partir del índice global */
 export function getWallpaperByIndex(index: number): WallpaperItem | undefined {
     return WALLPAPER_MAP.get(index);
 }

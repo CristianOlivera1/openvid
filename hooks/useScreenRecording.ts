@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "@/navigation";
 import type { RecordingState, RecordingResult, VideoData } from "@/types";
 import type { CameraConfig, RecordingSetupConfig } from "@/types/camera.types";
 import {
@@ -379,7 +379,6 @@ export function useScreenRecording() {
           };
           cameraRecorder.onerror = (event) => {
             console.error("Error del MediaRecorder (cámara):", event);
-            // Camera failure should not crash the whole recording.
           };
         }
 
@@ -396,10 +395,7 @@ export function useScreenRecording() {
             await saveVideoToIndexedDB(
               screenBlob || new Blob([], { type: "video/webm" }),
               duration,
-              {
-                cameraBlob,
-                cameraConfig: cameraConfigRef.current,
-              }
+              { cameraBlob, cameraConfig: cameraConfigRef.current }
             );
 
             if (pathname === "/editor") {
