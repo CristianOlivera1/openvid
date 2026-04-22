@@ -2,24 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { motion, useMotionValue } from "framer-motion";
-import type { AudioTrack, UploadedAudio } from "@/types/audio.types";
-
-const MIN_FRAGMENT_DURATION = 0.1;
-const MIN_VISUAL_WIDTH_PX = 50;
-
-interface AudioFragmentTrackItemProps {
-    track: AudioTrack;
-    audio: UploadedAudio | undefined;
-    isSelected: boolean;
-    contentWidth: number;
-    videoDuration: number;
-    otherTracks: AudioTrack[];
-    onSelect: () => void;
-    onUpdate: (updates: Partial<AudioTrack>) => void;
-    onDragStateChange?: (isDragging: boolean) => void;
-    onMouseEnter?: () => void;
-    onMouseLeave?: () => void;
-}
+import { AudioFragmentTrackItemProps, MIN_FRAGMENT_DURATION, MIN_VISUAL_WIDTH_PX } from "@/types/audio.types";
 
 export function AudioFragmentTrackItem({
     track,

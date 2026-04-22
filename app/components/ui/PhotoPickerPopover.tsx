@@ -5,10 +5,16 @@ import { Icon } from "@iconify/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { fetchPhotosWithCache, fetchDiscoveryPhotos, type UnifiedPhoto } from "@/lib/photo-providers";
 import { TooltipAction } from "@/components/ui/tooltip-action";
+import { useTranslations } from "next-intl";
 
 const SUGGESTION_BADGES = [
-    "blur gradient", "dark wallpaper", "minimal abstract", "neon city",
-    "nature landscape", "aurora borealis", "gradient wallpaper"
+    { id: "blur gradient", key: "blur_gradient" },
+    { id: "dark wallpaper", key: "dark_wallpaper" },
+    { id: "minimal abstract", key: "minimal_abstract" },
+    { id: "neon city", key: "neon_city" },
+    { id: "nature landscape", key: "nature_landscape" },
+    { id: "aurora borealis", key: "aurora_borealis" },
+    { id: "gradient wallpaper", key: "gradient_wallpaper" }
 ];
 
 interface PhotoPickerPopoverProps {
@@ -17,7 +23,6 @@ interface PhotoPickerPopoverProps {
 
 function ProgressiveImage({ photo }: { photo: UnifiedPhoto }) {
     const [isLoaded, setIsLoaded] = useState(false);
-
     return (
         <div
             className="w-full relative overflow-hidden squircle-element group"
@@ -49,10 +54,12 @@ function MasonryGrid({
     photos,
     onSelect,
     loading,
+    emptyText,
 }: {
     photos: UnifiedPhoto[];
     onSelect: (url: string) => void;
     loading: boolean;
+    emptyText: string;
 }) {
     function toColumns<T>(items: T[], n: number): T[][] {
         const cols: T[][] = Array.from({ length: n }, () => []);
@@ -83,7 +90,7 @@ function MasonryGrid({
         return (
             <div className="flex flex-col items-center justify-center py-20 text-white/30 gap-3">
                 <Icon icon="ph:image-broken-duotone" width="48" className="opacity-50" />
-                <span className="text-xs font-medium tracking-wide">Sin resultados</span>
+                <span className="text-xs font-medium tracking-wide">{emptyText}</span>
             </div>
         );
     }
@@ -108,6 +115,7 @@ function MasonryGrid({
 }
 
 export function PhotoPickerPopover({ onSelect }: PhotoPickerPopoverProps) {
+    const t = useTranslations("photoPicker");
     const [open, setOpen] = useState(false);
     const [inputValue, setInputValue] = useState("");
     const [activeQuery, setActiveQuery] = useState("");
@@ -116,6 +124,7 @@ export function PhotoPickerPopover({ onSelect }: PhotoPickerPopoverProps) {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isSearchMode, setIsSearchMode] = useState(false);
+
     const scrollRef = useRef<HTMLDivElement>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevOpenRef = useRef(false);
@@ -132,11 +141,13 @@ export function PhotoPickerPopover({ onSelect }: PhotoPickerPopoverProps) {
             setPage(1);
             setHasMore(true);
             setLoading(true);
+
             fetchDiscoveryPhotos().then((results) => {
                 setPhotos(results);
                 setLoading(false);
             });
         }, 0);
+
         return () => clearTimeout(t);
     }, [open]);
 
@@ -147,22 +158,26 @@ export function PhotoPickerPopover({ onSelect }: PhotoPickerPopoverProps) {
             setIsSearchMode(true);
             setPage(1);
             setLoading(true);
+
             fetchPhotosWithCache(activeQuery, 1, 20).then((results) => {
                 setPhotos(results);
                 setHasMore(results.length === 20);
                 setLoading(false);
             });
         }, 0);
+
         return () => clearTimeout(t);
     }, [activeQuery]);
 
     const handleScroll = useCallback(() => {
         const el = scrollRef.current;
         if (!el || !hasMore || loading || !isSearchMode) return;
+
         if (el.scrollTop + el.clientHeight >= el.scrollHeight - 80) {
             const nextPage = page + 1;
             setPage(nextPage);
             setLoading(true);
+
             fetchPhotosWithCache(activeQuery, nextPage, 20).then((results) => {
                 setPhotos((prev) => {
                     const seen = new Set(prev.map((p) => p.id));
@@ -182,7 +197,9 @@ export function PhotoPickerPopover({ onSelect }: PhotoPickerPopoverProps) {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setInputValue(val);
+
         if (debounceRef.current) clearTimeout(debounceRef.current);
+
         if (val.trim().length >= 2) {
             debounceRef.current = setTimeout(() => setActiveQuery(val.trim()), 600);
         }
@@ -197,6 +214,7 @@ export function PhotoPickerPopover({ onSelect }: PhotoPickerPopoverProps) {
         setActiveQuery("");
         setIsSearchMode(false);
         setLoading(true);
+
         fetchDiscoveryPhotos().then((results) => {
             setPhotos(results);
             setLoading(false);
@@ -209,30 +227,24 @@ export function PhotoPickerPopover({ onSelect }: PhotoPickerPopoverProps) {
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
-            <TooltipAction label="Buscar fondos (Unsplash + Pexels + Pixabay)">
+            <TooltipAction label={t("tooltip")}>
                 <PopoverTrigger asChild>
-                    <button
-                        className="aspect-square squircle-element bg-gray-100 border border-white/10 bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 bg-[url('/svg/ppu.svg')] bg-cover bg-center flex items-center justify-center hover:opacity-80 transition group relative overflow-hidden"
-                    >
-                    </button>
+                    <button className="aspect-square squircle-element bg-gray-100 border border-white/10 bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 bg-[url('/svg/ppu.svg')] bg-cover bg-center flex items-center justify-center hover:opacity-80 transition group relative overflow-hidden" />
                 </PopoverTrigger>
             </TooltipAction>
-
             <PopoverContent side="right" align="start" sideOffset={12} className="w-115 p-0 border-0 shadow-2xl">
                 <div className="flex flex-col bg-black border border-white/10 rounded-xl overflow-hidden shadow-2xl max-h-150">
-
                     <div className="px-4 py-3 border-b border-white/10 bg-white/5 shrink-0">
                         <div className="flex items-center gap-2">
                             <Icon icon="ph:images-bold" width="13" className="text-white/50" />
                             <span className="text-[10px] font-medium uppercase tracking-[0.15em] text-white/50">
-                                Fondos
+                                {t("title")}
                             </span>
                             <span className="ml-auto text-[10px] text-white/30">
-                                {isSearchMode ? `"${activeQuery}"` : "Descubriendo"}
+                                {isSearchMode ? `"${activeQuery}"` : t("statusDiscovering")}
                             </span>
                         </div>
                     </div>
-
                     <div className="px-4 pt-3 pb-2 shrink-0">
                         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/6 border border-white/10 focus-within:border-white/20 transition-colors">
                             <Icon icon="ph:magnifying-glass-bold" width="13" className="text-white/30 shrink-0" />
@@ -241,7 +253,7 @@ export function PhotoPickerPopover({ onSelect }: PhotoPickerPopoverProps) {
                                 value={inputValue}
                                 onChange={handleInputChange}
                                 onKeyDown={handleInputKeyDown}
-                                placeholder="Buscar fondos..."
+                                placeholder={t("searchPlaceholder")}
                                 className="flex-1 bg-transparent text-[12px] text-white/80 placeholder:text-white/30 outline-none"
                             />
                             {inputValue && (
@@ -251,47 +263,39 @@ export function PhotoPickerPopover({ onSelect }: PhotoPickerPopoverProps) {
                             )}
                         </div>
                     </div>
-
                     <div className="px-4 pb-3 shrink-0">
                         <div className="flex flex-wrap gap-1.5">
                             {SUGGESTION_BADGES.map((badge) => (
                                 <button
-                                    key={badge}
-                                    onClick={() => handleBadgeClick(badge)}
-                                    className={`px-2.5 py-0.5 rounded-full text-[11px] transition-all border ${activeQuery === badge
-                                        ? "bg-white/15 border-white/30 text-white/90"
-                                        : "bg-white/5 border-white/10 text-white/50 hover:text-white/70 hover:border-white/20"
+                                    key={badge.id}
+                                    onClick={() => handleBadgeClick(badge.id)}
+                                    className={`px-2.5 py-0.5 rounded-full text-[11px] transition-all border ${activeQuery === badge.id
+                                            ? "bg-white/15 border-white/30 text-white/90"
+                                            : "bg-white/5 border-white/10 text-white/50 hover:text-white/70 hover:border-white/20"
                                         }`}
                                 >
-                                    {badge}
+                                    {t(`badges.${badge.key}`)}
                                 </button>
                             ))}
                         </div>
                     </div>
-
                     <div className="h-px bg-white/10 shrink-0" />
-
                     <div
                         ref={scrollRef}
                         onScroll={handleScroll}
                         className="overflow-y-auto custom-scrollbar flex-1"
                         style={{ minHeight: 0 }}
                     >
-                        <MasonryGrid
-                            photos={photos}
-                            onSelect={handleSelect}
-                            loading={loading && photos.length === 0}
-                        />
+                        <MasonryGrid photos={photos} onSelect={handleSelect} loading={loading && photos.length === 0} emptyText={t("noResults")} />
                         {loading && photos.length > 0 && (
                             <div className="flex justify-center py-3">
                                 <Icon icon="mdi:loading" className="text-white/30 animate-spin" width="20" />
                             </div>
                         )}
                     </div>
-
                     <div className="px-4 py-2.5 border-t border-white/10 bg-white/5 shrink-0">
                         <span className="text-[10px] text-white/30">
-                            Fotos de{" "}
+                            {t("footerPhotosBy")}{" "}
                             <a
                                 href="https://unsplash.com"
                                 target="_blank"
@@ -309,7 +313,7 @@ export function PhotoPickerPopover({ onSelect }: PhotoPickerPopoverProps) {
                             >
                                 Pexels
                             </a>
-                            {" y "}
+                            {t("footerAnd")}
                             <a
                                 href="https://pixabay.com"
                                 target="_blank"

@@ -2,16 +2,20 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@iconify/react";
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import type { MediaType } from "@/types/editor.types";
 
 interface PlaceholderEditorProps {
     onVideoUpload?: (file: File) => void;
     isUploading?: boolean;
+    mediaType?: MediaType;
 }
 
-export default function PlaceholderEditor({ onVideoUpload, isUploading = false }: PlaceholderEditorProps) {
+export default function PlaceholderEditor({ onVideoUpload, isUploading = false, mediaType = "video" }: PlaceholderEditorProps) {
     const t = useTranslations('placeholder');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDragging, setIsDragging] = useState(false);
+
+    const isImageMode = mediaType === "image";
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -48,10 +52,18 @@ export default function PlaceholderEditor({ onVideoUpload, isUploading = false }
         setIsDragging(false);
 
         const file = e.dataTransfer.files?.[0];
-        if (file && file.type.startsWith("video/") && onVideoUpload) {
+        const isValidFile = isImageMode 
+            ? file?.type.startsWith("image/")
+            : file?.type.startsWith("video/");
+        
+        if (file && isValidFile && onVideoUpload) {
             onVideoUpload(file);
         }
     };
+
+    const acceptedFormats = isImageMode 
+        ? "image/jpeg,image/png,image/webp,image/gif"
+        : "video/mp4,video/webm,video/quicktime,video/x-matroska";
 
     return (
         <>
@@ -150,13 +162,15 @@ export default function PlaceholderEditor({ onVideoUpload, isUploading = false }
                     </div>
                     <div className="space-y-1 mb-6 pointer-events-none">
                         <p className="text-base font-medium text-zinc-200">
-                            {isDragging ? t('upload.dragging') : t('upload.title')}
+                            {isDragging 
+                                ? (isImageMode ? t('upload.draggingImage') : t('upload.dragging'))
+                                : (isImageMode ? t('upload.titleImage') : t('upload.title'))}
                             <span className="font-normal text-zinc-400">
-                                {!isDragging && ` ${t('upload.subtitle')}`}
+                                {!isDragging && ` ${isImageMode ? t('upload.subtitleImage') : t('upload.subtitle')}`}
                             </span>
                         </p>
                         <p className="text-sm text-zinc-500">
-                            {t('upload.formats')}
+                            {isImageMode ? t('upload.formatsImage') : t('upload.formats')}
                         </p>
                     </div>
                     <div className="relative z-10">
@@ -183,7 +197,7 @@ export default function PlaceholderEditor({ onVideoUpload, isUploading = false }
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+                        accept={acceptedFormats}
                         className="hidden"
                         onChange={handleFileChange}
                     />

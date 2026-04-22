@@ -4,7 +4,6 @@ import { Corner, VIDEO_Z_INDEX, getNearestCorner, getCornerStyle } from "@/lib";
 import { CanvasElement, SvgElement, ImageElement } from "@/types/canvas-elements.types";
 import { useRef, useState, useEffect, useCallback } from "react";
 
-{/* Canvas Elements Layer Component - renders elements either behind or above video */ }
 export function CanvasElementsLayer({
     canvasContainerRef,
     canvasElements,
@@ -19,6 +18,7 @@ export function CanvasElementsLayer({
     setIsDraggingElementRotation,
     elementDragStart,
     layerZIndex,
+    hitTestOnly = false,
 }: {
     canvasContainerRef?: React.RefObject<HTMLDivElement | null>;
     canvasElements: CanvasElement[];
@@ -33,11 +33,11 @@ export function CanvasElementsLayer({
     setIsDraggingElementRotation: (dragging: boolean) => void;
     elementDragStart: React.MutableRefObject<{ x: number; y: number; initialX: number; initialY: number; initialRotation: number }>;
     layerZIndex: number;
+     hitTestOnly?: boolean;
 }) {
     const layerRef = useRef<HTMLDivElement>(null);
     const [refSize, setRefSize] = useState(0);
 
-    // Per-element corner tracking: elementId → Corner
     const [elementCorners, setElementCorners] = useState<Record<string, Corner>>({});
 
     useEffect(() => {
@@ -63,9 +63,11 @@ export function CanvasElementsLayer({
         }
     }, [canvasContainerRef]);
 
-    const filteredElements = canvasElements.filter(element =>
+const filteredElements = hitTestOnly 
+    ? canvasElements  // todos los elementos cuando es hit layer
+    : canvasElements.filter(element =>
         behindVideo ? element.zIndex < VIDEO_Z_INDEX : element.zIndex >= VIDEO_Z_INDEX
-    );
+      );
 
     if (filteredElements.length === 0) {
         return (
@@ -101,8 +103,10 @@ export function CanvasElementsLayer({
                     width: wPx > 0 ? `${wPx}px` : `${element.width}%`,
                     height: hPx > 0 ? `${hPx}px` : `${element.height}%`,
                     transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
-                    zIndex: element.zIndex,
+                    zIndex: hitTestOnly ? element.zIndex : element.zIndex,
                     transition: isDraggingElement ? 'none' : 'transform 0.1s ease-out',
+                    // Cuando es hitTestOnly: invisible pero interactivo
+                    ...(hitTestOnly ? { opacity: 0, pointerEvents: 'auto' } : {}),
                 };
 
                 const handleMouseEnter = () => setHoveredElementId(element.id);
@@ -126,6 +130,21 @@ export function CanvasElementsLayer({
                         initialRotation: element.rotation,
                     };
                 };
+
+                if (hitTestOnly) {
+                    return (
+                        <div
+                            key={element.id}
+                            data-canvas-element
+                            className="pointer-events-auto cursor-move"
+                            style={commonStyle}
+                            onMouseEnter={handleMouseEnter}
+                            onMouseLeave={handleMouseLeave}
+                            onMouseMove={handleMouseMove}
+                            onMouseDown={handleMouseDown}
+                        />
+                    );
+                }
 
                 const rotationHandle = isSelected && onElementUpdate ? (
                     <div

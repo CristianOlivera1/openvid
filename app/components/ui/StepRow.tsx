@@ -34,12 +34,12 @@ export default function StepRow({
                             }}
                         />
 
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/5 to-transparent pointer-events-none" />
+                        <div className="absolute inset-0 rounded-full bg-linear-to-tr from-white/5 to-transparent pointer-events-none" />
 
                         <span className="relative z-10">{number}</span>
                     </span>
 
-                    <h3 className="text-3xl md:text-4xl font-light tracking-tight text-white drop-shadow-[1.2px_1.2px_100.2px_rgba(183,203,248,1)]">
+                    <h3 className="text-3xl md:text-4xl font-light tracking-tight text-white [text-shadow:0_0_60px_rgba(183,203,248,0.8),0_0_100px_rgba(183,203,248,0.7),0_0_200px_rgba(183,203,248,0.5),0_0_350px_rgba(183,203,248,0.3)]">
                         {title}
                     </h3>
                 </div>

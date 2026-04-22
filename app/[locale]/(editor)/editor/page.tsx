@@ -1,18 +1,23 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, lazy, Suspense, useMemo } from "react";
+import { toBlob } from 'html-to-image';
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { loadVideoFromIndexedDB, deleteRecordedVideo } from "@/hooks/useScreenRecording";
 import { useVideoUpload } from "@/hooks/useVideoUpload";
+import { useImageProjects } from "@/hooks/useImageProjects";
 import { getUploadedVideo, deleteUploadedVideo } from "@/lib/video-upload-cache";
+import { getUploadedImage, deleteUploadedImage } from "@/lib/image-upload-cache";
+import { useEditorMode } from "@/hooks/useEditorMode";
+import { useScreenCapture } from "@/hooks/useScreenCapture";
 import { useVideoExport } from "@/hooks/useVideoExport";
 import { useVideoThumbnails, type VideoThumbnail } from "@/hooks/useVideoThumbnails";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { clearAllThumbnailCache } from "@/lib/thumbnail-cache";
 import { addVideoToLibrary, addVideoToLibraryWithMetadata, getLibraryVideoCount, getLibraryVideo, findExistingVideo } from "@/lib/videos-library";
 import { calculateTotalDuration, findNextClipPosition, getClipAtTime, type VideoTrackClip } from "@/types/video-track.types";
-import type { ExportQuality, Tool, BackgroundTab, VideoCanvasHandle, BackgroundColorConfig, AspectRatio, CropArea, ZoomFragment, AudioTrack } from "@/types";
+import type { ExportQuality, Tool, BackgroundTab, VideoCanvasHandle, BackgroundColorConfig, AspectRatio, CropArea, ZoomFragment, AudioTrack, ImageExportFormat } from "@/types";
 import type { TrimRange } from "@/types/timeline.types";
 import type { MockupConfig } from "@/types/mockup.types";
 import type { EditorState } from "@/types/editor-state.types";
@@ -20,8 +25,10 @@ import { createInitialEditorState } from "@/types/editor-state.types";
 import { DEFAULT_MOCKUP_CONFIG, getMockupDefaultConfig } from "@/types/mockup.types";
 import type { CanvasElement } from "@/types/canvas-elements.types";
 import type { CameraConfig } from "@/types/camera.types";
+import type { Preview3DConfig, ImageMaskConfig } from "@/types/photo.types";
+import { DEFAULT_MASK_CONFIG, PREVIEW_CONFIGS } from "@/types/photo.types";
 import { MOCKUPS } from "@/lib/mockup-data";
-import { gradientToCss, generateDefaultZoomFragments, createZoomFragment, detectVideoHasAudio } from "@/types";
+import { gradientToCss, generateDefaultZoomFragments, createZoomFragment, detectVideoHasAudio, ASPECT_RATIO_DIMENSIONS } from "@/types";
 import { ToolsSidebar } from "@/app/components/ui/editor/ToolsSidebar";
 import { MobileToolsMenu } from "@/app/components/ui/editor/MobileToolsMenu";
 import { MobileControlPanel } from "@/app/components/ui/editor/MobileControlPanel";
@@ -37,13 +44,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { TooltipAction } from "@/components/ui/tooltip-action";
 
-// Lazy load heavy components
 const ControlPanel = lazy(() => import("@/app/components/ui/editor/ControlPanel").then(mod => ({ default: mod.ControlPanel })));
 const Timeline = lazy(() => import("@/app/components/ui/editor/Timeline").then(mod => ({ default: mod.Timeline })));
 const ExportOverlay = lazy(() => import("@/app/components/ui/ExportOverlay").then(mod => ({ default: mod.ExportOverlay })));
 const VideoCropperModal = lazy(() => import("@/app/components/ui/editor/VideoCropperModal").then(mod => ({ default: mod.VideoCropperModal })));
+const ImageCropperModal = lazy(() => import("@/app/components/ui/editor/ImageCropperModal").then(mod => ({ default: mod.ImageCropperModal })));
+const PhotoEditorPlaceholder = lazy(() => import("@/app/components/ui/editor/PhotoEditorPlaceholder").then(mod => ({ default: mod.PhotoEditorPlaceholder })));
 
 export default function Editor() {
+    // Editor mode (video/photo) from URL params
+    const { mode: editorMode, isVideoMode, isPhotoMode } = useEditorMode();
+
     // Undo/Redo system - centralized state management
     const {
         state: editorState,
@@ -54,6 +65,51 @@ export default function Editor() {
         canRedo,
         clearHistory,
     } = useUndoRedo<EditorState>(createInitialEditorState());
+
+    // Image state for photo mode
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const imageRef = useRef<HTMLImageElement>(null);
+    const [imageExportProgress, setImageExportProgress] = useState<{
+        status: "idle" | "preparing" | "rendering" | "complete" | "error";
+        progress: number;
+        message: string;
+    }>({
+        status: "idle",
+        progress: 0,
+        message: "",
+    });
+
+    // Screen capture hook
+    const { captureScreen, isCapturing } = useScreenCapture();
+
+    // Image projects system (IndexedDB persistence for photo mode)
+    const {
+        projects: imageProjects,
+        currentProject,
+        isLoading: isLoadingProjects,
+        isSaving: isSavingProject,
+        createProject,
+        saveCurrentProject,
+        switchToProject,
+        removeProject,
+    } = useImageProjects();
+
+    // Photo mode 3D preview state
+    const [selectedPreviewId, setSelectedPreviewId] = useState<string>("front");
+    const [canvasImageUrl, setCanvasImageUrl] = useState<string | null>(null);
+    const [imageTransform, setImageTransform] = useState<Preview3DConfig>({
+        id: "front",
+        label: "Front",
+        rotateX: 0,
+        rotateY: 0,
+        rotateZ: 0,
+        translateY: 0,
+        scale: 0.9,
+        perspective: 600,
+    });
+    const [apply3DToBackground, setApply3DToBackground] = useState(false);
+    const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+    const [imageMaskConfig, setImageMaskConfig] = useState<ImageMaskConfig>(DEFAULT_MASK_CONFIG);
 
     const [activeTool, setActiveTool] = useState<Tool>("screenshot");
     const [backgroundTab, setBackgroundTab] = useState<BackgroundTab>("wallpaper");
@@ -104,7 +160,9 @@ export default function Editor() {
     const [cropArea, setCropArea] = useState<CropArea | undefined>(undefined);
 
     // Computed: which dimensions to use for the canvas
-    const customAspectRatio = aspectRatio === "auto" ? videoDimensions : (aspectRatio === "custom" ? customDimensions : null);
+    const customAspectRatio = aspectRatio === "auto"
+        ? (isPhotoMode ? imageDimensions : videoDimensions)
+        : (aspectRatio === "custom" ? customDimensions : null);
 
     // Refs for fullscreen
     const editorAreaRef = useRef<HTMLDivElement>(null);
@@ -174,6 +232,493 @@ export default function Editor() {
         setActiveTool("camera");
     }, []);
 
+    // Auto-save current image project when configurations change
+    const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isRestoringProjectRef = useRef(false);
+    const isLoadingFromCacheRef = useRef(false);
+    const lastRestoredProjectIdRef = useRef<string | null>(null);
+
+    const autoSaveCurrentProject = useCallback(async () => {
+        if (!isPhotoMode || !imageUrl || !currentProject) return;
+
+        // Don't auto-save during project restoration
+        if (isRestoringProjectRef.current) return;
+
+        // Debounce saves to avoid excessive writes
+        if (autoSaveTimeoutRef.current) {
+            clearTimeout(autoSaveTimeoutRef.current);
+        }
+
+        autoSaveTimeoutRef.current = setTimeout(async () => {
+            try {
+                await saveCurrentProject({
+                    backgroundTab,
+                    selectedWallpaper,
+                    backgroundBlur,
+                    selectedImageUrl,
+                    backgroundColorConfig,
+                    padding,
+                    roundedCorners,
+                    shadows,
+                    aspectRatio,
+                    customDimensions,
+                    cropArea,
+                    mockupId,
+                    mockupConfig,
+                    canvasElements,
+                    imageTransform: {
+                        rotation: videoTransform.rotation,
+                        translateX: videoTransform.translateX,
+                        translateY: videoTransform.translateY,
+                    },
+                    imagePreview3D: imageTransform,
+                    apply3DToBackground,
+                    imageMaskConfig,
+                });
+            } catch (error) {
+                console.error("Auto-save failed:", error);
+            }
+        }, 3000); // 3 second debounce
+    }, [
+        isPhotoMode,
+        imageUrl,
+        currentProject,
+        saveCurrentProject,
+        backgroundTab,
+        selectedWallpaper,
+        backgroundBlur,
+        selectedImageUrl,
+        backgroundColorConfig,
+        padding,
+        roundedCorners,
+        shadows,
+        aspectRatio,
+        customDimensions,
+        cropArea,
+        mockupId,
+        mockupConfig,
+        canvasElements,
+        videoTransform,
+        imageTransform,
+        apply3DToBackground,
+        imageMaskConfig,
+    ]);
+
+    useEffect(() => {
+        if (currentProject && isPhotoMode && !isRestoringProjectRef.current) {
+            autoSaveCurrentProject();
+        }
+    }, [
+        backgroundTab,
+        selectedWallpaper,
+        backgroundBlur,
+        selectedImageUrl,
+        backgroundColorConfig,
+        padding,
+        roundedCorners,
+        shadows,
+        aspectRatio,
+        customDimensions,
+        cropArea,
+        mockupId,
+        mockupConfig,
+        canvasElements,
+        videoTransform,
+        imageTransform,
+        apply3DToBackground,
+        imageMaskConfig,
+        currentProject,
+        isPhotoMode,
+        autoSaveCurrentProject,
+    ]);
+
+    // Restore current project when project ID changes (not on every currentProject update)
+    useEffect(() => {
+        if (!isPhotoMode || !currentProject) return;
+
+        if (lastRestoredProjectIdRef.current === currentProject.id) return;
+
+        isRestoringProjectRef.current = true;
+        lastRestoredProjectIdRef.current = currentProject.id;
+
+        const imageDataUrl = currentProject.imageDataUrl;
+
+        if (!imageDataUrl) {
+            console.error("Project missing imageDataUrl");
+            isRestoringProjectRef.current = false;
+            return;
+        }
+
+        // Directly restore all states using the data URL
+        setImageUrl(imageDataUrl);
+        setBackgroundTab(currentProject.backgroundTab);
+        setSelectedWallpaper(currentProject.selectedWallpaper);
+        setBackgroundBlur(currentProject.backgroundBlur);
+        setSelectedImageUrl(currentProject.selectedImageUrl);
+        setBackgroundColorConfig(currentProject.backgroundColorConfig);
+        setPadding(currentProject.padding);
+        setRoundedCorners(currentProject.roundedCorners);
+        setShadows(currentProject.shadows);
+        setAspectRatio(currentProject.aspectRatio);
+        setCustomDimensions(currentProject.customDimensions);
+        setCropArea(currentProject.cropArea);
+        setMockupId(currentProject.mockupId);
+        setMockupConfig(currentProject.mockupConfig);
+        setCanvasElements(currentProject.canvasElements);
+        setVideoTransform(currentProject.imageTransform);
+        setImageTransform(currentProject.imagePreview3D);
+        setApply3DToBackground(currentProject.apply3DToBackground);
+        setImageMaskConfig(currentProject.imageMaskConfig);
+        setImageDimensions({
+            width: currentProject.imageWidth,
+            height: currentProject.imageHeight,
+        });
+
+        setTimeout(() => {
+            isRestoringProjectRef.current = false;
+        }, 500); // 
+    }, [currentProject, isPhotoMode]);
+
+    // Image project handlers
+    const handleSelectImageProject = useCallback(async (projectId: string) => {
+        if (!isPhotoMode) return;
+
+        // Save current project before switching
+        if (currentProject && imageUrl) {
+            await autoSaveCurrentProject();
+        }
+
+        // Load the selected project
+        await switchToProject(projectId);
+    }, [isPhotoMode, currentProject, imageUrl, autoSaveCurrentProject, switchToProject]);
+
+    const handleAddImageToCanvas = useCallback(async (projectId: string) => {
+        await handleSelectImageProject(projectId);
+    }, [handleSelectImageProject]);
+
+    const handleDeleteImageProject = useCallback(async (projectId: string) => {
+        // If deleting the current project, cancel auto-save and clear state immediately
+        const isDeletingCurrent = currentProject?.id === projectId;
+
+        if (isDeletingCurrent) {
+            // Cancel any pending auto-save to prevent race condition
+            if (autoSaveTimeoutRef.current) {
+                clearTimeout(autoSaveTimeoutRef.current);
+                autoSaveTimeoutRef.current = null;
+            }
+        }
+
+        await removeProject(projectId);
+
+        // Clear canvas if we deleted the current project
+        if (isDeletingCurrent) {
+            setImageUrl(null);
+            setCanvasImageUrl(null);
+            setImageDimensions(null);
+            // Reset to default state
+            setBackgroundTab("wallpaper");
+            setSelectedWallpaper(0);
+            setBackgroundBlur(0);
+            setPadding(10);
+            setRoundedCorners(10);
+            setShadows(10);
+            setAspectRatio("auto");
+            setCustomDimensions(null);
+            setCropArea(undefined);
+            setMockupId("none");
+            setMockupConfig(DEFAULT_MOCKUP_CONFIG);
+            setCanvasElements([]);
+            setImageTransform({ id: "front", label: "Front", rotateX: 0, rotateY: 0, rotateZ: 0, translateY: 0, scale: 0.9, perspective: 600 });
+            setApply3DToBackground(false);
+            setImageMaskConfig(DEFAULT_MASK_CONFIG);
+        }
+    }, [currentProject, removeProject]);
+
+    const handleUploadImageToHistory = useCallback(async (file: File) => {
+        // This will create a new project when user uploads from history menu
+        try {
+            const img = await createImageBitmap(file);
+            const project = await createProject(
+                file,
+                file.name,
+                img.width,
+                img.height,
+                {
+                    backgroundTab,
+                    selectedWallpaper,
+                    backgroundBlur,
+                    selectedImageUrl,
+                    backgroundColorConfig,
+                    padding,
+                    roundedCorners,
+                    shadows,
+                    aspectRatio,
+                    customDimensions,
+                    cropArea,
+                    mockupId,
+                    mockupConfig,
+                    canvasElements,
+                    imageTransform: {
+                        rotation: videoTransform.rotation,
+                        translateX: videoTransform.translateX,
+                        translateY: videoTransform.translateY,
+                    },
+                    imagePreview3D: imageTransform,
+                    apply3DToBackground,
+                    imageMaskConfig,
+                }
+            );
+
+            if (project) {
+                setImageUrl(project.imageDataUrl);
+                setImageDimensions({ width: img.width, height: img.height });
+            }
+        } catch (error) {
+            console.error("Failed to upload image to history:", error);
+        }
+    }, [
+        createProject,
+        backgroundTab,
+        selectedWallpaper,
+        backgroundBlur,
+        selectedImageUrl,
+        backgroundColorConfig,
+        padding,
+        roundedCorners,
+        shadows,
+        aspectRatio,
+        customDimensions,
+        cropArea,
+        mockupId,
+        mockupConfig,
+        canvasElements,
+        videoTransform,
+        imageTransform,
+        apply3DToBackground,
+        imageMaskConfig,
+    ]);
+
+    // Screen capture handler - now creates a project
+    const handleScreenCapture = useCallback(async () => {
+        const blob = await captureScreen();
+        if (blob) {
+            try {
+                const file = new File([blob], `Screenshot ${new Date().toLocaleString()}.png`, { type: "image/png" });
+                const img = await createImageBitmap(blob);
+
+                const project = await createProject(
+                    file,
+                    file.name,
+                    img.width,
+                    img.height
+                );
+
+                if (project) {
+                    setImageUrl(project.imageDataUrl);
+                    setImageDimensions({ width: img.width, height: img.height });
+                }
+            } catch (error) {
+                console.error("Failed to create project from screenshot:", error);
+            }
+        }
+    }, [captureScreen, createProject]);
+
+    // Unified image upload handler - updates current project if exists, otherwise creates new
+    const handleImageUploadToCanvas = useCallback(async (file: File) => {
+        try {
+            const img = await createImageBitmap(file);
+
+            // If there's a current project, update it instead of creating a new one
+            if (currentProject && isPhotoMode) {
+                const updated = await saveCurrentProject({
+                    imageBlob: file,
+                    imageName: file.name,
+                    imageWidth: img.width,
+                    imageHeight: img.height,
+                });
+
+                if (updated) {
+                    setImageUrl(updated.imageDataUrl);
+                    setImageDimensions({ width: img.width, height: img.height });
+                }
+            } else {
+                // No current project, create a new one
+                const project = await createProject(
+                    file,
+                    file.name,
+                    img.width,
+                    img.height
+                );
+
+                if (project) {
+                    setImageUrl(project.imageDataUrl);
+                    setImageDimensions({ width: img.width, height: img.height });
+                }
+            }
+        } catch (error) {
+            console.error("Failed to upload image:", error);
+        }
+    }, [createProject, currentProject, isPhotoMode, saveCurrentProject]);
+
+    // Handler for drag & drop images on canvas (photo mode only)
+    const handleImageDrop = useCallback(async (files: FileList | File[]) => {
+        if (!isPhotoMode) return;
+
+        const fileArray = Array.from(files);
+        const imageFile = fileArray.find(f => f.type.startsWith('image/'));
+
+        if (imageFile) {
+            await handleImageUploadToCanvas(imageFile);
+        }
+    }, [isPhotoMode, handleImageUploadToCanvas]);
+
+    // Image export handler - using html-to-image with fixed dimensions
+    const handleImageExport = useCallback(async (
+        format: ImageExportFormat,
+        quality: number,
+        scale: number
+    ) => {
+        if (!canvasRef.current) return;
+
+        try {
+            setImageExportProgress({ status: "preparing", progress: 0, message: "Preparing export..." });
+
+            const previewContainer = canvasRef.current.getPreviewContainer();
+            if (!previewContainer || !imageUrl) {
+                throw new Error("Preview container or image not available");
+            }
+
+            const imageElements = previewContainer.querySelectorAll('img');
+            const originalSrcs = new Map<HTMLImageElement, string>();
+
+            await Promise.all(Array.from(imageElements).map(async (img) => {
+                const src = img.src;
+                if (!src.startsWith('blob:') && !src.startsWith('data:')) return;
+
+                try {
+                    const response = await fetch(src);
+                    const blob = await response.blob();
+                    const base64 = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                    originalSrcs.set(img, src);
+                    img.src = base64;
+                    if (!img.complete) {
+                        await new Promise<void>((resolve) => { img.onload = () => resolve(); });
+                    }
+                } catch (e) {
+                    console.warn("Could not convert image src to base64:", src, e);
+                }
+            }));
+
+            setImageExportProgress({ status: "rendering", progress: 50, message: "Rendering image..." });
+
+            let exportWidth = 1920;
+            let exportHeight = 1080;
+
+            if ((aspectRatio === "auto" || aspectRatio === "custom") && customDimensions) {
+                exportWidth = customDimensions.width;
+                exportHeight = customDimensions.height;
+            } else if (aspectRatio === "auto") {
+                if (imageDimensions) {
+                    exportWidth = imageDimensions.width;
+                    exportHeight = imageDimensions.height;
+                }
+            } else {
+                const dims = ASPECT_RATIO_DIMENSIONS[aspectRatio];
+                if (dims) { exportWidth = dims.width; exportHeight = dims.height; }
+            }
+
+            exportWidth = Math.round(exportWidth * scale);
+            exportHeight = Math.round(exportHeight * scale);
+
+            const hasTransparentBackground = selectedWallpaper === -1;
+
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            const blob = await toBlob(previewContainer, {
+                quality,
+                cacheBust: false,
+                ...(hasTransparentBackground ? {} : { backgroundColor: '#09090B' }),
+                type: `image/${format}`,
+                canvasWidth: exportWidth,
+                canvasHeight: exportHeight,
+                pixelRatio: 1,
+            });
+
+            originalSrcs.forEach((originalSrc, img) => {
+                img.src = originalSrc;
+            });
+
+            if (!blob) throw new Error("Failed to generate image blob");
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `openvidshot-${Date.now()}.${format}`;
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            setImageExportProgress({ status: "complete", progress: 100, message: "Export complete!" });
+            setTimeout(() => setImageExportProgress({ status: "idle", progress: 0, message: "" }), 2000);
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+            setImageExportProgress({ status: "error", progress: 0, message: `Export failed: ${errorMessage}` });
+            setTimeout(() => setImageExportProgress({ status: "idle", progress: 0, message: "" }), 4000);
+        }
+    }, [imageUrl, imageDimensions, selectedWallpaper, aspectRatio, customDimensions]);
+    // Generate canvas snapshot for photo mode previews
+    useEffect(() => {
+        if (!isPhotoMode || !imageUrl || !canvasRef.current) {
+            setCanvasImageUrl(null);
+            return;
+        }
+
+        const generateSnapshot = async () => {
+            try {
+                await canvasRef.current?.drawFrame();
+                const exportCanvas = canvasRef.current?.getExportCanvas();
+                if (exportCanvas) {
+                    const dataUrl = exportCanvas.toDataURL("image/png", 0.8);
+                    setCanvasImageUrl(dataUrl);
+                }
+            } catch (error) {
+                console.error("Error generating canvas snapshot:", error);
+            }
+        };
+
+        const initialTimeout = setTimeout(generateSnapshot, 300);
+
+        return () => {
+            clearTimeout(initialTimeout);
+        };
+    }, [isPhotoMode, imageUrl, backgroundTab, selectedWallpaper, backgroundBlur, padding, roundedCorners, shadows, selectedImageUrl, backgroundColorConfig]);
+
+    // Handle 3D preview selection
+    const handleSelectPreview = useCallback((config: Preview3DConfig) => {
+        setSelectedPreviewId(config.id);
+        setImageTransform(config);
+    }, []);
+
+    // Handle 3D background toggle
+    const handleToggle3DBackground = useCallback((value: boolean) => {
+        setApply3DToBackground(value);
+    }, [setApply3DToBackground]);
+
+    // Reset all photo editor visual settings to defaults
+    const handleResetPhotoEditor = useCallback(() => {
+        const frontConfig = PREVIEW_CONFIGS[0];
+        setSelectedPreviewId(frontConfig.id);
+        setImageTransform(frontConfig);
+        setApply3DToBackground(false);
+        setImageMaskConfig(DEFAULT_MASK_CONFIG);
+        setVideoTransform({ rotation: 0, translateX: 0, translateY: 0 });
+    }, []);
+
     // Videos library state
     const [newVideosCount, setNewVideosCount] = useState<number>(0);
     const [videosLibraryRefresh, setVideosLibraryRefresh] = useState<number>(0);
@@ -196,9 +741,7 @@ export default function Editor() {
     const videoUrlsRef = useRef<Map<string, string>>(new Map());
     const activeClipIdRef = useRef<string | null>(null);
     const activeClipDataRef = useRef<VideoTrackClip | null>(null);
-    // Per-clip audio state cache: libraryVideoId → hasAudio (avoids async reads during playback)
     const clipAudioStateRef = useRef<Map<string, boolean>>(new Map());
-    // Ref to always have the latest muteOriginalAudio value (prevents stale closures inside RAF callbacks)
     const muteOriginalAudioRef = useRef<boolean>(false);
     useEffect(() => {
         muteOriginalAudioRef.current = muteOriginalAudio;
@@ -323,6 +866,10 @@ export default function Editor() {
                 muteOriginalAudio,
                 masterVolume,
                 cameraConfig,
+                videoTransform,
+                imageTransform,
+                apply3DToBackground,
+                imageMaskConfig,
             });
         }, 300);
         return () => {
@@ -336,6 +883,7 @@ export default function Editor() {
         aspectRatio, customDimensions, cropArea, trimRange,
         zoomFragments, mockupId, mockupConfig, canvasElements,
         audioTracks, muteOriginalAudio, masterVolume, cameraConfig,
+        videoTransform, imageTransform, apply3DToBackground, imageMaskConfig,
         setEditorState
     ]);
 
@@ -361,12 +909,15 @@ export default function Editor() {
         setMuteOriginalAudio(editorState.muteOriginalAudio);
         setMasterVolume(editorState.masterVolume);
         setCameraConfig(editorState.cameraConfig);
+        setVideoTransform(editorState.videoTransform);
+        setImageTransform(editorState.imageTransform);
+        setApply3DToBackground(editorState.apply3DToBackground);
+        setImageMaskConfig(editorState.imageMaskConfig);
     }, [editorState]);
 
     // Handler para cambiar el mockup
     const handleMockupChange = useCallback((newMockupId: string) => {
         setMockupId(newMockupId);
-        // Establecer la config por defecto del nuevo mockup
         const newMockup = MOCKUPS.find(m => m.id === newMockupId);
         setMockupConfig(getMockupDefaultConfig(newMockup));
     }, []);
@@ -379,7 +930,7 @@ export default function Editor() {
     // Handler para cambiar las esquinas redondeadas (sincroniza ambos valores)
     const handleRoundedCornersChange = useCallback((value: number) => {
         setRoundedCorners(value); // Para NoneMockup y canvas general
-        setMockupConfig(prev => ({ ...prev, cornerRadius: value })); // Para mockups que usan config
+        setMockupConfig(prev => ({ ...prev, cornerRadius: value }));
     }, []);
 
     // Canvas elements handlers
@@ -401,14 +952,11 @@ export default function Editor() {
 
     const selectCanvasElement = useCallback((id: string | null) => {
         setSelectedElementId(id);
-        // Auto-open elements menu when selecting an element
         if (id) {
             setActiveTool("elements");
         }
     }, []);
 
-
-    // Copy/paste handlers
     const [copiedElement, setCopiedElement] = useState<CanvasElement | null>(null);
 
     const copySelectedElement = useCallback(() => {
@@ -425,9 +973,9 @@ export default function Editor() {
         const newElement = {
             ...copiedElement,
             id: `${copiedElement.type}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-            x: copiedElement.x + 5, // Offset slightly from original
+            x: copiedElement.x + 5,
             y: copiedElement.y + 5,
-            zIndex: Date.now(),
+            zIndex: VIDEO_Z_INDEX + 1,
         } as CanvasElement;
 
         setCanvasElements(prev => [...prev, newElement]);
@@ -785,7 +1333,6 @@ export default function Editor() {
 
     // Handler para subir video (desde ToolsSidebar)
     const handleVideoUpload = useCallback(async (file: File) => {
-        // Usar ref para obtener el valor actual de clips (evitar stale closure)
         const hasExistingClips = videoClipsRef.current.length > 0;
 
         // Add video to library first
@@ -800,14 +1347,12 @@ export default function Editor() {
             return;
         }
 
-        // If there are already clips, just add to library (user will add to track manually)
         if (hasExistingClips) {
             setActiveTool("videos");
             return;
         }
 
         // First video - add to track
-        // Clear any stale blob/URL refs from previous videos
         for (const [, url] of videoUrlsRef.current.entries()) {
             URL.revokeObjectURL(url);
         }
@@ -1096,6 +1641,44 @@ export default function Editor() {
 
     const lastLoadedVideoIdRef = useRef<string | null>(null);
 
+    // Load image from cache when in photo mode and create project if not exists
+    useEffect(() => {
+        if (!isPhotoMode) return;
+        if (currentProject) return;
+        if (isLoadingFromCacheRef.current) return;
+        isLoadingFromCacheRef.current = true;
+
+        const loadImage = async () => {
+            try {
+                const cachedImage = await getUploadedImage();
+                if (cachedImage) {
+                    await deleteUploadedImage();
+
+                    const blob = cachedImage.blob;
+                    const img = await createImageBitmap(blob);
+
+                    const project = await createProject(
+                        blob,
+                        cachedImage.fileName || "Uploaded Image",
+                        img.width,
+                        img.height
+                    );
+
+                    if (project) {
+                        setImageUrl(project.imageDataUrl);
+                        setImageDimensions({ width: img.width, height: img.height });
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading image from cache:", error);
+            } finally {
+                isLoadingFromCacheRef.current = false;
+            }
+        };
+
+        loadImage();
+    }, [isPhotoMode, currentProject, createProject]);
+
     useEffect(() => {
         const loadVideo = async () => {
             try {
@@ -1172,7 +1755,6 @@ export default function Editor() {
 
                                 videoBlobsRef.current.set(libraryVideo.id, videoBlob);
                                 videoUrlsRef.current.set(libraryVideo.id, videoToLoad.url);
-                                // Cache per-clip audio state + update global videoHasAudioTrack state
                                 const hasAudio = libraryVideo.hasAudio !== false;
                                 clipAudioStateRef.current.set(libraryVideo.id, hasAudio);
                                 setVideoHasAudioTrack(hasAudio);
@@ -1206,8 +1788,6 @@ export default function Editor() {
                             setIsRecordedVideo(false);
                         }
 
-                        // Pick up camera track + config saved at record-time.
-                        // Only the recorded-video branch carries these fields.
                         if ('cameraUrl' in videoToLoad && videoToLoad.cameraUrl) {
                             setCameraUrl(videoToLoad.cameraUrl);
                         } else {
@@ -1285,6 +1865,30 @@ export default function Editor() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [undo, redo, canUndo, canRedo]);
 
+    // Keyboard listener for Ctrl+V image paste (photo mode only)
+    useEffect(() => {
+        if (!isPhotoMode) return;
+
+        const handlePaste = async (e: ClipboardEvent) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            for (const item of Array.from(items)) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) {
+                        handleImageUploadToCanvas(file);
+                    }
+                    break;
+                }
+            }
+        };
+
+        window.addEventListener('paste', handlePaste);
+        return () => window.removeEventListener('paste', handlePaste);
+    }, [isPhotoMode, handleImageUploadToCanvas]);
+
     const togglePlayPause = useCallback(() => {
         if (videoRef.current) {
             if (isPlaying) {
@@ -1338,7 +1942,7 @@ export default function Editor() {
                             }
                         } else {
                             activeClipIdRef.current = clipAtTime.id;
-                            activeClipDataRef.current = clipAtTime; // Keep data ref in sync (clip may have moved positions)
+                            activeClipDataRef.current = clipAtTime;
                             const clipTime = timelineToClipTime(startTime, clipAtTime);
                             videoRef.current.currentTime = clipTime;
                         }
@@ -1367,7 +1971,6 @@ export default function Editor() {
         }
     }, [isPlaying, currentTime, trimRange.start, trimRange.end, syncAudioPlayback, findActiveClipAtTime, timelineToClipTime]);
 
-    // Smooth time update using requestAnimationFrame
     const updateTimeSmoothRef = useRef<() => void>(() => { });
 
     useEffect(() => {
@@ -1441,7 +2044,7 @@ export default function Editor() {
                                 const nextBlob = videoBlobsRef.current.get(nextClip.libraryVideoId);
 
                                 if (nextUrl && videoRef.current) {
-                                    const nextClipSnapshot = { ...nextClip }; // copia inmutable
+                                    const nextClipSnapshot = { ...nextClip };
 
                                     activeClipIdRef.current = nextClipSnapshot.id;
                                     activeClipDataRef.current = nextClipSnapshot;
@@ -1775,7 +2378,8 @@ export default function Editor() {
         }
     }, [isDraggingPlayhead, isPlaying, syncAudioPlayback, findActiveClipAtTime, timelineToClipTime]);
 
-    const handleImageUpload = (file: File) => {
+    // Handler for background image upload (for ControlPanel)
+    const handleImageUpload = useCallback(async (file: File) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             const dataUrl = e.target?.result as string;
@@ -1785,7 +2389,7 @@ export default function Editor() {
             }
         };
         reader.readAsDataURL(file);
-    };
+    }, []);
 
     const handleImageSelect = (url: string) => {
         if (backgroundTab === "wallpaper") {
@@ -1820,7 +2424,6 @@ export default function Editor() {
     // Zoom fragment handlers
     const handleSelectZoomFragment = useCallback((fragmentId: string | null) => {
         setSelectedZoomFragmentId(fragmentId);
-        // Clear other selections when selecting zoom fragment (mutual exclusivity)
         if (fragmentId) {
             setSelectedAudioTrackId(null);
             setSelectedVideoClipId(null);
@@ -1851,7 +2454,7 @@ export default function Editor() {
         const newFragment = createZoomFragment(validPosition.startTime, validPosition.endTime);
         setZoomFragments(prev => [...prev, newFragment].sort((a, b) => a.startTime - b.startTime));
         setSelectedZoomFragmentId(newFragment.id);
-        setActiveTool("zoom"); // Switch to zoom tool when adding
+        setActiveTool("zoom");
     }, [videoDuration]);
 
     const handleUpdateZoomFragment = useCallback((fragmentId: string, updates: Partial<ZoomFragment>) => {
@@ -1902,7 +2505,6 @@ export default function Editor() {
         }
     }, []);
 
-    // Listen for fullscreen changes (e.g., pressing Escape)
     useEffect(() => {
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
@@ -1912,7 +2514,6 @@ export default function Editor() {
         return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
     }, []);
 
-    // Keyboard shortcuts for zoom fragments
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -1926,6 +2527,9 @@ export default function Editor() {
             }
 
             if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                if (isPhotoMode && !copiedElement) {
+                    return;
+                }
                 e.preventDefault();
                 pasteElement();
                 return;
@@ -1934,7 +2538,7 @@ export default function Editor() {
             if ((e.key === "Delete" || e.key === "Backspace") && selectedElementId) {
                 e.preventDefault();
                 deleteCanvasElement(selectedElementId);
-                return; // Prevent zoom fragment deletion if element is selected
+                return;
             }
 
             if ((e.key === "Delete" || e.key === "Backspace") && selectedVideoClipId) {
@@ -1972,7 +2576,7 @@ export default function Editor() {
 
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [selectedElementId, selectedZoomFragmentId, selectedAudioTrackId, selectedVideoClipId, deleteCanvasElement, handleDeleteZoomFragment, handleDeleteAudioTrack, handleDeleteVideoClip, copySelectedElement, pasteElement]);
+    }, [selectedElementId, selectedZoomFragmentId, selectedAudioTrackId, selectedVideoClipId, deleteCanvasElement, handleDeleteZoomFragment, handleDeleteAudioTrack, handleDeleteVideoClip, copySelectedElement, pasteElement, isPhotoMode, copiedElement]);
 
     useEffect(() => {
         const checkMobile = () => {
@@ -2024,6 +2628,10 @@ export default function Editor() {
                         selectedVideoClipId={selectedVideoClipId}
                         selectedElementId={selectedElementId}
                         newVideosCount={newVideosCount}
+                        editorMode={editorMode}
+                        onImageUpload={handleImageUploadToCanvas}
+                        onScreenCapture={handleScreenCapture}
+                        isCapturing={isCapturing}
                     />
                 </div>
 
@@ -2109,6 +2717,13 @@ export default function Editor() {
                                         cameraUrl={cameraUrl}
                                         cameraConfig={cameraConfig}
                                         onCameraConfigChange={handleCameraConfigChange}
+                                        imageProjects={imageProjects}
+                                        currentImageProjectId={currentProject?.id || null}
+                                        isLoadingProjects={isLoadingProjects}
+                                        onSelectImageProject={handleSelectImageProject}
+                                        onAddImageToCanvas={handleAddImageToCanvas}
+                                        onDeleteImageProject={handleDeleteImageProject}
+                                        onUploadImageToHistory={handleUploadImageToHistory}
                                     />
                                 </Suspense>
                             </motion.div>
@@ -2149,12 +2764,23 @@ export default function Editor() {
                         onRedo={redo}
                         canUndo={canUndo}
                         canRedo={canRedo}
+                        editorMode={editorMode}
+                        onImageExport={handleImageExport}
+                        imageExportProgress={imageExportProgress}
+                        canvasWidth={customAspectRatio?.width || 1920}
+                        canvasHeight={customAspectRatio?.height || 1080}
                     />
 
                     <VideoCanvas
                         ref={canvasRef}
                         videoUrl={videoUrl}
                         videoRef={videoRef}
+                        mediaType={isPhotoMode ? "image" : "video"}
+                        imageUrl={imageUrl}
+                        imageRef={imageRef}
+                        imageTransform={imageTransform}
+                        apply3DToBackground={apply3DToBackground}
+                        imageMaskConfig={imageMaskConfig}
                         padding={padding}
                         roundedCorners={roundedCorners}
                         shadows={shadows}
@@ -2177,6 +2803,8 @@ export default function Editor() {
                         mockupId={mockupId}
                         mockupConfig={mockupConfig ?? DEFAULT_MOCKUP_CONFIG}
                         onVideoUpload={handleVideoUpload}
+                        onImageUpload={handleImageUploadToCanvas}
+                        onImageDrop={handleImageDrop}
                         isUploading={isUploading}
                         videoTransform={videoTransform}
                         onVideoTransformChange={setVideoTransform}
@@ -2208,54 +2836,82 @@ export default function Editor() {
                         }}
                     />
 
-                    <PlayerControls
-                        isPlaying={isPlaying}
-                        currentTime={currentTime}
-                        videoDuration={videoDuration}
-                        aspectRatio={aspectRatio}
-                        customAspectRatio={aspectRatio === "custom" ? customDimensions : videoDimensions}
-                        isFullscreen={isFullscreen}
-                        zoomLevel={timelineZoom}
-                        onTogglePlayPause={togglePlayPause}
-                        onSkipBackward={skipBackward}
-                        onSkipForward={skipForward}
-                        onToggleFullscreen={toggleFullscreen}
-                        onAspectRatioChange={handleAspectRatioChange}
-                        onCustomAspectRatioChange={handleCustomDimensionsChange}
-                        onOpenCropper={handleOpenCropper}
-                        onZoomChange={handleZoomChange}
-                    />
+                    {/* Video mode: Show player controls and timeline */}
+                    {isVideoMode && (
+                        <>
+                            <PlayerControls
+                                isPlaying={isPlaying}
+                                currentTime={currentTime}
+                                videoDuration={videoDuration}
+                                aspectRatio={aspectRatio}
+                                customAspectRatio={aspectRatio === "custom" ? customDimensions : videoDimensions}
+                                isFullscreen={isFullscreen}
+                                zoomLevel={timelineZoom}
+                                onTogglePlayPause={togglePlayPause}
+                                onSkipBackward={skipBackward}
+                                onSkipForward={skipForward}
+                                onToggleFullscreen={toggleFullscreen}
+                                onAspectRatioChange={handleAspectRatioChange}
+                                onCustomAspectRatioChange={handleCustomDimensionsChange}
+                                onOpenCropper={handleOpenCropper}
+                                onZoomChange={handleZoomChange}
+                            />
 
-                    <Suspense fallback={<TimelineSkeleton />}>
-                        <Timeline
-                            videoDuration={videoDuration}
-                            currentTime={currentTime}
-                            onSeek={handleSeek}
-                            videoUrl={videoUrl}
-                            zoomLevel={timelineZoom}
-                            isDraggingPlayhead={isDraggingPlayhead}
-                            onDragStart={handlePlayheadDragStart}
-                            onDragEnd={handlePlayheadDragEnd}
-                            trimRange={trimRange}
-                            onTrimChange={setTrimRange}
-                            videoClips={videoClips}
-                            selectedVideoClipId={selectedVideoClipId}
-                            onSelectVideoClip={handleSelectVideoClip}
-                            onUpdateVideoClip={handleUpdateVideoClip}
-                            onDeleteVideoClip={handleDeleteVideoClip}
-                            zoomFragments={zoomFragments}
-                            selectedZoomFragmentId={selectedZoomFragmentId}
-                            onSelectZoomFragment={handleSelectZoomFragment}
-                            onAddZoomFragment={handleAddZoomFragment}
-                            onUpdateZoomFragment={handleUpdateZoomFragment}
-                            onActivateZoomTool={handleActivateZoomTool}
-                            audioTracks={audioTracks}
-                            uploadedAudios={uploadedAudios}
-                            selectedAudioTrackId={selectedAudioTrackId}
-                            onSelectAudioTrack={handleSelectAudioTrack}
-                            onUpdateAudioTrack={handleUpdateAudioTrack}
-                        />
-                    </Suspense>
+                            <Suspense fallback={<TimelineSkeleton />}>
+                                <Timeline
+                                    videoDuration={videoDuration}
+                                    currentTime={currentTime}
+                                    onSeek={handleSeek}
+                                    videoUrl={videoUrl}
+                                    zoomLevel={timelineZoom}
+                                    isDraggingPlayhead={isDraggingPlayhead}
+                                    onDragStart={handlePlayheadDragStart}
+                                    onDragEnd={handlePlayheadDragEnd}
+                                    trimRange={trimRange}
+                                    onTrimChange={setTrimRange}
+                                    videoClips={videoClips}
+                                    selectedVideoClipId={selectedVideoClipId}
+                                    onSelectVideoClip={handleSelectVideoClip}
+                                    onUpdateVideoClip={handleUpdateVideoClip}
+                                    onDeleteVideoClip={handleDeleteVideoClip}
+                                    zoomFragments={zoomFragments}
+                                    selectedZoomFragmentId={selectedZoomFragmentId}
+                                    onSelectZoomFragment={handleSelectZoomFragment}
+                                    onAddZoomFragment={handleAddZoomFragment}
+                                    onUpdateZoomFragment={handleUpdateZoomFragment}
+                                    onActivateZoomTool={handleActivateZoomTool}
+                                    audioTracks={audioTracks}
+                                    uploadedAudios={uploadedAudios}
+                                    selectedAudioTrackId={selectedAudioTrackId}
+                                    onSelectAudioTrack={handleSelectAudioTrack}
+                                    onUpdateAudioTrack={handleUpdateAudioTrack}
+                                />
+                            </Suspense>
+                        </>
+                    )}
+
+                    {/* Photo mode: Show placeholder instead of timeline */}
+                    {isPhotoMode && (
+                        <Suspense fallback={<TimelineSkeleton />}>
+                            <PhotoEditorPlaceholder
+                                canvasImageUrl={canvasImageUrl}
+                                staticImageUrl={imageUrl}
+                                onSelectPreview={handleSelectPreview}
+                                selectedPreviewId={selectedPreviewId}
+                                aspectRatio={aspectRatio}
+                                onAspectRatioChange={handleAspectRatioChange}
+                                customAspectRatio={customAspectRatio}
+                                onCustomAspectRatioChange={handleCustomDimensionsChange}
+                                onOpenCropper={handleOpenCropper}
+                                apply3DToBackground={apply3DToBackground}
+                                onToggle3DBackground={handleToggle3DBackground}
+                                imageMaskConfig={imageMaskConfig}
+                                onImageMaskConfigChange={setImageMaskConfig}
+                                imageTransform={imageTransform}
+                                onReset={handleResetPhotoEditor}
+                            />
+                        </Suspense>
+                    )}
 
                 </div>
 
@@ -2335,13 +2991,23 @@ export default function Editor() {
                 />
             </Suspense>
             <Suspense fallback={null}>
-                <VideoCropperModal
-                    isOpen={isCropperOpen}
-                    onClose={handleCloseCropper}
-                    videoUrl={videoUrl}
-                    onCropApply={handleCropApply}
-                    initialCrop={cropArea}
-                />
+                {isVideoMode ? (
+                    <VideoCropperModal
+                        isOpen={isCropperOpen}
+                        onClose={handleCloseCropper}
+                        videoUrl={videoUrl}
+                        onCropApply={handleCropApply}
+                        initialCrop={cropArea}
+                    />
+                ) : (
+                    <ImageCropperModal
+                        isOpen={isCropperOpen}
+                        onClose={handleCloseCropper}
+                        imageUrl={imageUrl}
+                        onCropApply={handleCropApply}
+                        initialCrop={cropArea}
+                    />
+                )}
             </Suspense>
 
             {autoTrimModalOpen && pendingAudioUpload && (

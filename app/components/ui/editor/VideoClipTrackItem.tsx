@@ -88,8 +88,6 @@ export function VideoClipTrackItem({
             .sort((a, b) => a.startTime - b.startTime);
 
         let minStart = 0;
-        // Don't limit maxEnd by totalDuration - allow clip to expand up to its full duration
-        // The actual limit will be the next clip's start time OR unlimited (for the last clip)
         let maxEnd = Infinity;
 
         for (const other of sorted) {

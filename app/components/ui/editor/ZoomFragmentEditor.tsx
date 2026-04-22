@@ -13,6 +13,7 @@ export function ZoomFragmentEditor({
     getThumbnailForTime, videoDimensions, onBack, onDelete, onUpdate,
 }: ZoomFragmentEditorProps) {
     const t = useTranslations("zoomFragmentEditor");
+    const tCommon = useTranslations("editor");
     const focusPreviewRef = useRef<HTMLDivElement>(null);
     const [editingPoint, setEditingPoint] = useState<'start' | 'end'>('start');
 
@@ -310,8 +311,8 @@ export function ZoomFragmentEditor({
                         <div className="flex items-center gap-2">
                             <Icon icon="mdi:cube-outline" width="16" className="text-white/50" />
                             <div>
-                                <p className="text-xs font-medium text-white/80">{t("effect3d.title")}</p>
-                                <p className="text-[10px] text-white/40">{t("effect3d.subtitle")}</p>
+                                <p className="text-xs font-medium text-white/80">{tCommon("effect3d.title")}</p>
+                                <p className="text-[10px] text-white/40">{tCommon("effect3d.subtitle")}</p>
                             </div>
                         </div>
                         <button onClick={handleToggle3D} className={`relative w-11 h-6 rounded-full transition-colors ${fragment.enable3D ? 'bg-gray-400' : 'bg-white/15'}`}>

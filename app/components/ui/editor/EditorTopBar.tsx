@@ -2,7 +2,10 @@
 
 import { Icon } from "@iconify/react";
 import { ExportDropdown } from "../ExportDropdown";
+import { ExportImageDropdown } from "../ExportImageDropdown";
 import type { ExportQuality, ExportProgress } from "@/types";
+import type { EditorMode } from "@/types/editor-mode.types";
+import type { ImageExportFormat } from "@/types/image-project.types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +15,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { TooltipAction } from "@/components/ui/tooltip-action";
 
+interface ImageExportProgress {
+    status: "idle" | "preparing" | "rendering" | "complete" | "error";
+    progress: number;
+    message: string;
+}
+
 interface EditorTopBarProps {
     onExport: (quality: ExportQuality) => void;
     exportProgress: ExportProgress;
@@ -20,6 +29,12 @@ interface EditorTopBarProps {
     onRedo?: () => void;
     canUndo?: boolean;
     canRedo?: boolean;
+    // Photo mode props
+    editorMode?: EditorMode;
+    onImageExport?: (format: ImageExportFormat, quality: number, scale: number) => void;
+    imageExportProgress?: ImageExportProgress;
+    canvasWidth?: number;
+    canvasHeight?: number;
 }
 
 export function EditorTopBar({
@@ -30,7 +45,13 @@ export function EditorTopBar({
     onRedo,
     canUndo = false,
     canRedo = false,
+    editorMode = "video",
+    onImageExport,
+    imageExportProgress,
+    canvasWidth = 1920,
+    canvasHeight = 1080,
 }: EditorTopBarProps) {
+    const isPhotoMode = editorMode === "photo";
     const t = useTranslations("editor.topBar");
     const [showAlert, setShowAlert] = useState(false);
     const [prevStatus, setPrevStatus] = useState<string>(exportProgress.status);
@@ -135,11 +156,21 @@ export function EditorTopBar({
                     </TooltipAction>
                 </div>
 
-                <ExportDropdown
-                    onExport={onExport}
-                    exportProgress={exportProgress}
-                    hasTransparentBackground={hasTransparentBackground}
-                />
+                {isPhotoMode && onImageExport && imageExportProgress ? (
+                    <ExportImageDropdown
+                        onExport={onImageExport}
+                        exportProgress={imageExportProgress}
+                        hasTransparentBackground={hasTransparentBackground}
+                        canvasWidth={canvasWidth}
+                        canvasHeight={canvasHeight}
+                    />
+                ) : (
+                    <ExportDropdown
+                        onExport={onExport}
+                        exportProgress={exportProgress}
+                        hasTransparentBackground={hasTransparentBackground}
+                    />
+                )}
 
                 {loading ? (
                     <div className="flex items-center gap-2 pl-3 border-l border-white/10 ml-1">

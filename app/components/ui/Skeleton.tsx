@@ -510,3 +510,38 @@ export function VideosMenuSkeleton() {
     </div>
   );
 }
+
+export function HistoryMenuSkeleton() {
+    return (
+        <div className="p-4 flex flex-col gap-5">
+            {/* Título del menú */}
+            <Skeleton height={20} width={120} />
+
+            {/* Botón principal de "Subir / Nuevo" */}
+            <Skeleton height={36} variant="square" />
+
+            {/* Sección de la cuadrícula de historial */}
+            <div className="space-y-4">
+                <Skeleton height={10} width={80} /> {/* Subtítulo (ej. "Recientes") */}
+                
+                <div className="grid grid-cols-2 gap-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="flex flex-col gap-2 p-2 rounded-lg bg-white/3 border border-white/5">
+                            {/* Miniatura del proyecto/imagen */}
+                            <Skeleton 
+                                variant="square" 
+                                className="w-full rounded-md" 
+                                style={{ aspectRatio: "16/9" } as React.CSSProperties} 
+                            />
+                            {/* Textos simulados (Nombre y fecha) */}
+                            <div className="space-y-1.5 mt-1">
+                                <Skeleton height={10} width="80%" />
+                                <Skeleton height={8} width="50%" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}

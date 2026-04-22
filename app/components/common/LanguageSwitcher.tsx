@@ -5,6 +5,7 @@ import { usePathname, useRouter } from '@/navigation';
 import { useState, useTransition } from 'react';
 import { Icon } from '@iconify/react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { Button } from '@/components/ui/button';
 
 const languages = [
   { code: 'en', name: 'English', icon: 'circle-flags:us' },
@@ -33,9 +34,8 @@ export function LanguageSwitcher() {
   return (
     <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenu.Trigger asChild>
-        <button
+        <Button variant="outline"
           disabled={isPending}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 squircle-element transition-colors border border-white/10 disabled:opacity-50"
         >
           <Icon icon={currentLanguage.icon} width="18" height="18" />
           <span className="hidden sm:inline font-medium">{currentLanguage.code.toUpperCase()}</span>
@@ -44,7 +44,7 @@ export function LanguageSwitcher() {
             width="14"
             className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           />
-        </button>
+        </Button>
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Portal>

@@ -295,7 +295,7 @@ export default function InteractiveRecordingSteps() {
   ];
 
   return (
-    <div id="docs" className="w-full max-w-7xl mx-auto px-0 sm:px-6 py-24 text-left">
+    <div id="docs" className="w-full max-w-7xl mx-auto px-0 sm:px-6 py-6 sm:py-24 text-left">
       <div className="max-w-3xl mx-auto text-center mb-32">
         <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-white mb-6 leading-tight drop-shadow-[1.2px_1.2px_100.2px_rgba(183,203,248,1)]">
           {t('title')} <br />

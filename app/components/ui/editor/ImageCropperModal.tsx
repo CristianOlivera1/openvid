@@ -5,24 +5,32 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { CROP_ASPECT_RATIOS, VideoCropperModalProps, type CropArea } from "@/types";
+import { CROP_ASPECT_RATIOS, type CropArea } from "@/types";
 
-export function VideoCropperModal({
+interface ImageCropperModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    imageUrl: string | null;
+    onCropApply: (cropArea: CropArea) => void;
+    initialCrop?: CropArea | null;
+}
+
+export function ImageCropperModal({
     isOpen,
     onClose,
-    videoUrl,
+    imageUrl,
     onCropApply,
     initialCrop,
-}: VideoCropperModalProps) {
+}: ImageCropperModalProps) {
     const t = useTranslations("videoCropper");
     const containerRef = useRef<HTMLDivElement>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const imageRef = useRef<HTMLImageElement>(null);
     const [cropArea, setCropArea] = useState<CropArea>(initialCrop ?? { x: 0, y: 0, width: 100, height: 100 });
     const [selectedAspectRatio, setSelectedAspectRatio] = useState<number | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [dragType, setDragType] = useState<"move" | "resize" | null>(null);
     const [dragHandle, setDragHandle] = useState<string | null>(null);
-    const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
+    const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
     const [wasOpen, setWasOpen] = useState(false);
     const dragStartPos = useRef({ x: 0, y: 0 });
     const initialCropRef = useRef<CropArea>({ x: 0, y: 0, width: 100, height: 100 });
@@ -35,31 +43,31 @@ export function VideoCropperModal({
         setWasOpen(false);
     }
 
-    const handleVideoLoad = useCallback(() => {
-        if (videoRef.current) {
-            setVideoDimensions({
-                width: videoRef.current.videoWidth,
-                height: videoRef.current.videoHeight,
+    const handleImageLoad = useCallback(() => {
+        if (imageRef.current) {
+            setImageDimensions({
+                width: imageRef.current.naturalWidth,
+                height: imageRef.current.naturalHeight,
             });
         }
     }, []);
 
     const handleAspectRatioSelect = useCallback((ratio: number | null) => {
         setSelectedAspectRatio(ratio);
-        if (ratio === null || videoDimensions.width === 0) return;
+        if (ratio === null || imageDimensions.width === 0) return;
 
-        const videoAspect = videoDimensions.width / videoDimensions.height;
+        const imageAspect = imageDimensions.width / imageDimensions.height;
         const targetAspect = ratio;
 
         let newWidth: number;
         let newHeight: number;
 
-        if (targetAspect > videoAspect) {
+        if (targetAspect > imageAspect) {
             newWidth = 100;
-            newHeight = (100 * videoAspect) / targetAspect;
+            newHeight = (100 * imageAspect) / targetAspect;
         } else {
             newHeight = 100;
-            newWidth = (100 * targetAspect) / videoAspect;
+            newWidth = (100 * targetAspect) / imageAspect;
         }
 
         const newX = (100 - newWidth) / 2;
@@ -71,7 +79,7 @@ export function VideoCropperModal({
             width: Math.min(100, newWidth),
             height: Math.min(100, newHeight),
         });
-    }, [videoDimensions]);
+    }, [imageDimensions]);
 
     const handleMouseDown = (e: React.MouseEvent, type: "move" | "resize", handle?: string) => {
         e.preventDefault();
@@ -219,15 +227,16 @@ export function VideoCropperModal({
                     transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                     className="bg-[#0a0a0b] rounded-2xl border border-white/10 w-[92vw] max-w-5xl max-h-[88vh] flex flex-col overflow-hidden shadow-2xl"
                 >
+                    {/* Header */}
                     <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10">
                         <div className="flex items-center gap-2.5">
                             <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center">
                                 <Icon icon="mdi:crop" className="text-sm text-white/70" />
                             </div>
-                            <span className="text-sm font-medium text-white">{t("title")}</span>
-                            {videoDimensions.width > 0 && (
+                            <span className="text-sm font-medium text-white">Recortar Imagen</span>
+                            {imageDimensions.width > 0 && (
                                 <span className="text-[11px] font-mono text-white/60 bg-white/4 px-2 py-0.5 rounded-md border border-white/10">
-                                    {videoDimensions.width} × {videoDimensions.height}
+                                    {imageDimensions.width} × {imageDimensions.height}
                                 </span>
                             )}
                         </div>
@@ -239,7 +248,9 @@ export function VideoCropperModal({
                         </button>
                     </div>
 
+                    {/* Content */}
                     <div className="flex-1 flex overflow-hidden min-h-0">
+                        {/* Preview Area */}
                         <div className="flex-1 p-6 flex items-center justify-center bg-black/50 overflow-hidden">
                             <div
                                 ref={containerRef}
@@ -248,41 +259,45 @@ export function VideoCropperModal({
                                 <div
                                     className="relative"
                                     style={{
-                                        width: "100%",
-                                        height: "100%",
-                                        maxWidth: "100%",
-                                        maxHeight: "100%",
-                                        aspectRatio:
-                                            videoDimensions.width && videoDimensions.height
-                                                ? `${videoDimensions.width}/${videoDimensions.height}`
-                                                : "16/9",
+                                        width: imageDimensions.width > imageDimensions.height ? '100%' : 'auto',
+                                        height: imageDimensions.width > imageDimensions.height ? 'auto' : '100%',
+                                        aspectRatio: `${imageDimensions.width}/${imageDimensions.height}`,
+                                        maxWidth: '100%',
+                                        maxHeight: '100%',
                                     }}
                                 >
-                                    {videoUrl ? (
-                                        <video
-                                            ref={videoRef}
-                                            src={videoUrl}
-                                            className="absolute inset-0 w-full h-full object-contain bg-black"
-                                            onLoadedMetadata={handleVideoLoad}
-                                            muted
-                                            loop
-                                            autoPlay
-                                        />
-                                    ) : (
-                                        <div className="absolute inset-0 bg-white/3 rounded-lg flex items-center justify-center text-white/20 text-sm">
-                                            {t("noVideo")}
-                                        </div>
-                                    )}
+                                    {/* Imagen */}
+                                    <img
+                                        ref={imageRef}
+                                        src={imageUrl || ''}
+                                        alt="Crop preview"
+                                        onLoad={handleImageLoad}
+                                        className="w-full h-full object-contain select-none pointer-events-none"
+                                        draggable={false}
+                                    />
 
+                                    {/* Overlay oscuro fuera del área de recorte */}
                                     <div className="absolute inset-0 pointer-events-none">
-                                        <div className="absolute bg-black/75 left-0 right-0 top-0" style={{ height: `${cropArea.y}%` }} />
-                                        <div className="absolute bg-black/75 left-0 right-0 bottom-0" style={{ height: `${Math.max(0, 100 - cropArea.y - cropArea.height)}%` }} />
-                                        <div className="absolute bg-black/75 left-0" style={{ top: `${cropArea.y}%`, width: `${cropArea.x}%`, height: `${cropArea.height}%` }} />
-                                        <div className="absolute bg-black/75 right-0" style={{ top: `${cropArea.y}%`, width: `${Math.max(0, 100 - cropArea.x - cropArea.width)}%`, height: `${cropArea.height}%` }} />
+                                        <svg width="100%" height="100%" className="absolute inset-0">
+                                            <defs>
+                                                <mask id="cropMask">
+                                                    <rect width="100%" height="100%" fill="white" />
+                                                    <rect
+                                                        x={`${cropArea.x}%`}
+                                                        y={`${cropArea.y}%`}
+                                                        width={`${cropArea.width}%`}
+                                                        height={`${cropArea.height}%`}
+                                                        fill="black"
+                                                    />
+                                                </mask>
+                                            </defs>
+                                            <rect width="100%" height="100%" fill="black" fillOpacity="0.5" mask="url(#cropMask)" />
+                                        </svg>
                                     </div>
 
+                                    {/* Área de recorte */}
                                     <div
-                                        className="absolute border border-white/80 cursor-move"
+                                        className="absolute border-2 border-white shadow-lg cursor-move"
                                         style={{
                                             left: `${cropArea.x}%`,
                                             top: `${cropArea.y}%`,
@@ -291,59 +306,39 @@ export function VideoCropperModal({
                                         }}
                                         onMouseDown={(e) => handleMouseDown(e, "move")}
                                     >
+                                        {/* Regla de tercios */}
                                         <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
                                             {[...Array(9)].map((_, i) => (
-                                                <div key={i} className="border border-white/15" />
+                                                <div key={i} className="border border-white/20" />
                                             ))}
                                         </div>
 
-                                        {videoDimensions.width > 0 && (
-                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-sm border border-white/12 text-white/60 text-[10px] font-mono px-2 py-0.5 rounded-md whitespace-nowrap pointer-events-none">
-                                                {Math.round((videoDimensions.width * cropArea.width) / 100)} ×{" "}
-                                                {Math.round((videoDimensions.height * cropArea.height) / 100)}
-                                            </div>
-                                        )}
-
-                                        {["nw", "ne", "sw", "se"].map((handle) => (
+                                        {/* Handles de resize */}
+                                        {["nw", "ne", "sw", "se", "n", "s", "w", "e"].map((handle) => (
                                             <div
                                                 key={handle}
-                                                className={`absolute w-3 h-3 bg-white rounded-sm shadow-lg ${handle === "nw" ? "-top-1.5 -left-1.5 cursor-nwse-resize" :
-                                                        handle === "ne" ? "-top-1.5 -right-1.5 cursor-nesw-resize" :
-                                                            handle === "sw" ? "-bottom-1.5 -left-1.5 cursor-nesw-resize" :
-                                                                "-bottom-1.5 -right-1.5 cursor-nwse-resize"
-                                                    }`}
-                                                onMouseDown={(e) => {
-                                                    e.stopPropagation();
-                                                    handleMouseDown(e, "resize", handle);
+                                                className={`absolute w-3 h-3 bg-white border border-gray-800 rounded-sm cursor-${
+                                                    handle.includes("n") || handle.includes("s") ? "ns" : handle.includes("w") || handle.includes("e") ? "ew" : "nwse"
+                                                }-resize hover:scale-125 transition-transform`}
+                                                style={{
+                                                    ...(handle.includes("n") && { top: -1.5 }),
+                                                    ...(handle.includes("s") && { bottom: -1.5 }),
+                                                    ...(handle.includes("w") && { left: -1.5 }),
+                                                    ...(handle.includes("e") && { right: -1.5 }),
+                                                    ...(!handle.includes("n") && !handle.includes("s") && { top: "50%", transform: "translateY(-50%)" }),
+                                                    ...(!handle.includes("w") && !handle.includes("e") && { left: "50%", transform: "translateX(-50%)" }),
                                                 }}
+                                                onMouseDown={(e) => handleMouseDown(e, "resize", handle)}
                                             />
                                         ))}
-
-                                        {["n", "s", "w", "e"].map((handle) => {
-                                            const isVertical = handle === "n" || handle === "s";
-                                            return (
-                                                <div
-                                                    key={handle}
-                                                    className={`absolute bg-white rounded-sm ${handle === "n" ? "left-1/2 -translate-x-1/2 -top-0.75 cursor-ns-resize" :
-                                                            handle === "s" ? "left-1/2 -translate-x-1/2 -bottom-0.75 cursor-ns-resize" :
-                                                                handle === "w" ? "top-1/2 -translate-y-1/2 -left-0.75 cursor-ew-resize" :
-                                                                    "top-1/2 -translate-y-1/2 -right-0.75 cursor-ew-resize"
-                                                        }`}
-                                                    style={{ width: isVertical ? "28px" : "5px", height: isVertical ? "5px" : "28px" }}
-                                                    onMouseDown={(e) => {
-                                                        e.stopPropagation();
-                                                        handleMouseDown(e, "resize", handle);
-                                                    }}
-                                                />
-                                            );
-                                        })}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Sidebar Controls */}
-                        <div className="w-56 shrink-0 border-l border-white/10 flex flex-col bg-[#0d0d0f]">
+                        {/* Sidebar */}
+                        <div className="w-64 bg-[#0a0a0b] border-l border-white/10 flex flex-col">
+                            {/* Aspect Ratios */}
                             <div className="p-4 border-b border-white/10">
                                 <p className="text-[10px] uppercase tracking-widest font-semibold text-white/60 mb-3">
                                     {t("sections.ratio")}
@@ -353,16 +348,17 @@ export function VideoCropperModal({
                                         <div key={ratio.label} className="relative">
                                             <button
                                                 onClick={() => handleAspectRatioSelect(ratio.value)}
-                                                className={`w-full py-1.5 text-[11px] font-medium rounded-lg transition-all ${selectedAspectRatio === ratio.value
+                                                className={`w-full py-1.5 text-[11px] font-medium rounded-lg transition-all ${
+                                                    selectedAspectRatio === ratio.value
                                                         ? "text-white border-transparent"
                                                         : "bg-white/4 text-white/40 hover:bg-white/8 hover:text-white/70 border border-white/10"
-                                                    }`}
+                                                }`}
                                                 style={
                                                     selectedAspectRatio === ratio.value
                                                         ? {
-                                                            background: "radial-gradient(circle at 50% 0%, #555555 0%, #252525 64%)",
-                                                            boxShadow: "0 0 0 1px #fff3, 0 4px 4px 0 #0004, 0 0 0 1px #333",
-                                                        }
+                                                              background: "radial-gradient(circle at 50% 0%, #555555 0%, #252525 64%)",
+                                                              boxShadow: "0 0 0 1px #fff3, 0 4px 4px 0 #0004, 0 0 0 1px #333",
+                                                          }
                                                         : {}
                                                 }
                                             >
@@ -376,6 +372,7 @@ export function VideoCropperModal({
                                 </div>
                             </div>
 
+                            {/* Crop Area Info */}
                             <div className="p-4 border-b border-white/10">
                                 <p className="text-[10px] uppercase tracking-widest font-semibold text-white/60 mb-3">
                                     {t("sections.area")}
@@ -398,6 +395,7 @@ export function VideoCropperModal({
 
                             <div className="flex-1" />
 
+                            {/* Actions */}
                             <div className="p-4 flex flex-col gap-2">
                                 <Button variant="outline" onClick={handleReset}>
                                     {t("buttons.reset")}

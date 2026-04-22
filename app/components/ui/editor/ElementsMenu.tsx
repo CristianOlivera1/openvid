@@ -371,7 +371,7 @@ export function ElementsMenu({
                             )}
 
                             <div className="space-y-3">
-                                <SliderControl icon="mdi:resize" label={t("properties.size")} value={selectedElement.type === "svg" ? shapeSize : imageSize} onChange={selectedElement.type === "svg" ? setShapeSize : setImageSize} min={5} max={100} />
+                                <SliderControl icon="mdi:resize" label={t("properties.size")} value={selectedElement.type === "svg" ? shapeSize : imageSize} onChange={selectedElement.type === "svg" ? setShapeSize : setImageSize} min={5} max={200} />
                                 <SliderControl icon="mdi:opacity" label={t("properties.opacity")} value={selectedElement.type === "svg" ? shapeOpacity : imageOpacity} onChange={selectedElement.type === "svg" ? setShapeOpacity : setImageOpacity} />
                             </div>
 

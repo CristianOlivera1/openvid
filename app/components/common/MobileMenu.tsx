@@ -126,38 +126,39 @@ export function MobileMenu() {
                 <Icon icon="solar:external-link-linear" className="w-4 h-4 ml-auto opacity-50" />
               </a>
 
-              {hasCachedVideo && (
-                <Link
-                  href="/editor"
-                  onClick={closeMenu}
-                  className="flex items-center gap-3 px-4 py-3 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
-                >
-                  <Icon icon="solar:video-frame-cut-2-linear" className="w-5 h-5" />
-                  <span>{t('editor')}</span>
-                </Link>
-              )}
+              <a
+                href="/donate"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={closeMenu}
+                className="flex items-center gap-3 px-4 py-3 text-neutral-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              >
+                <Icon icon="mdi:donate" className="w-5 h-5" />
+                <span>{t('donate')}</span>
+                <Icon icon="solar:external-link-linear" className="w-4 h-4 ml-auto opacity-50" />
+              </a>
             </div>
           </nav>
 
           <div className="p-4 border-t border-white/5">
             {user ? (
-                <button
-                  onClick={handleSignOut}
-                  disabled={isLoggingOut}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-red-500/20 text-sm"
-                >
-                  {isLoggingOut ? (
-                    <>
-                      <Icon icon="svg-spinners:ring-resize" className="w-5 h-5 animate-spin" />
-                      <span className="font-medium">{t('loggingOut')}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Icon icon="solar:logout-2-linear" className="w-5 h-5" />
-                      <span className="font-medium">{t('logout')}</span>
-                    </>
-                  )}
-                </button>
+              <button
+                onClick={handleSignOut}
+                disabled={isLoggingOut}
+                className="w-full flex items-center justify-center gap-3 px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-red-500/20 text-sm"
+              >
+                {isLoggingOut ? (
+                  <>
+                    <Icon icon="svg-spinners:ring-resize" className="w-5 h-5 animate-spin" />
+                    <span className="font-medium">{t('loggingOut')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="solar:logout-2-linear" className="w-5 h-5" />
+                    <span className="font-medium">{t('logout')}</span>
+                  </>
+                )}
+              </button>
             ) : (
               <Button variant="primary" asChild className="w-full">
                 <Link

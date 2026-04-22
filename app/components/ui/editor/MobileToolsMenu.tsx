@@ -43,10 +43,10 @@ export function MobileToolsMenu({
         <Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
             <Dialog.Trigger asChild>
                 <button
-                    className="fixed bottom-4 left-4 z-50 h-14 w-14 rounded-full shadow-lg shadow-blue-500/50 bg-gradient-primary flex items-center justify-center hover:scale-105 transition-transform active:scale-95 lg:hidden"
+                    className="fixed bottom-4 left-4 z-50 size-10 rounded-full shadow-lg shadow-blue-500/50 bg-gradient-primary flex items-center justify-center hover:scale-105 transition-transform active:scale-95 lg:hidden"
                     aria-label="Abrir menú de herramientas"
                 >
-                    <Icon icon="solar:widget-2-bold-duotone" width="24" className="text-white" />
+                    <Icon icon="solar:widget-2-bold-duotone" width="20" className="text-white" />
                 </button>
             </Dialog.Trigger>
 

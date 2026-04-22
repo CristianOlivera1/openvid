@@ -10,8 +10,8 @@ import { ZoomFragmentTrackItem, findValidFragmentPosition } from "./ZoomFragment
 import { AudioFragmentTrackItem } from "./AudioFragmentTrackItem";
 import { VideoClipTrackItem } from "./VideoClipTrackItem";
 import { Icon } from "@iconify/react";
+import { useTranslations } from "next-intl";
 
-// Default duration for new zoom fragments (in seconds)
 const DEFAULT_ZOOM_FRAGMENT_DURATION = 2;
 
 export function Timeline({
@@ -45,6 +45,8 @@ export function Timeline({
     onSelectAudioTrack,
     onUpdateAudioTrack,
 }: TimelineProps) {
+    const t = useTranslations("timeline");
+    
     const trackRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [trackWidth, setTrackWidth] = useState(0);
@@ -346,7 +348,7 @@ export function Timeline({
                                 onDragStart={handleDragStart}
                                 onDragEnd={handleDragEnd}
                             >
-                                <div className={`w-2.5 h-2.5 bg-blue-400 rotate-45 rounded-[2px] mt-[3px] shrink-0 shadow-[0_0_8px_rgba(96,165,250,0.6)] transition-colors ${isDragging ? 'bg-blue-300 scale-110' : 'group-hover:bg-blue-300'}`} />
+                                <div className={`w-2.5 h-2.5 bg-blue-400 rotate-45 rounded-[2px] mt-0.75 shrink-0 shadow-[0_0_8px_rgba(96,165,250,0.6)] transition-colors ${isDragging ? 'bg-blue-300 scale-110' : 'group-hover:bg-blue-300'}`} />
                                 <div className={`w-px flex-1 transition-colors ${isDragging ? 'bg-blue-300 w-0.5' : 'bg-blue-400 group-hover:bg-blue-300'}`} />
                             </motion.div>
 
@@ -553,7 +555,6 @@ export function Timeline({
                                             />
                                         ))}
 
-                                        {/* Ghost fragment — follows cursor on hover (shows nearest valid position) */}
                                         {isHoveringZoomRow && !isDraggingZoomFragment && !isOverFragment && (() => {
                                             const hoverTime = (ghostX / contentWidth) * validDuration;
                                             const validPosition = findValidFragmentPosition(
@@ -564,14 +565,13 @@ export function Timeline({
                                             );
 
                                             if (!validPosition) {
-                                                // No space available at all
                                                 return (
                                                     <div
                                                         className="absolute top-[10%] h-[80%] w-32 pointer-events-none"
                                                         style={{ left: ghostX - 64 }}
                                                     >
                                                         <div className="w-full h-full rounded border border-dashed border-red-400/50 bg-red-500/10 flex flex-col items-center justify-center gap-0.5">
-                                                            <span className="text-[8px] font-mono text-red-400/60">No espacio</span>
+                                                            <span className="text-[8px] font-mono text-red-400/60"> {t("noSpace")}</span>
                                                         </div>
                                                     </div>
                                                 );

@@ -3,7 +3,8 @@
 import { Icon } from "@iconify/react";
 import { SidebarTool } from "../SidebarTool";
 import type { ToolsSidebarProps } from "@/types/tool-sidebar.types";
-import { useRef, useState, useEffect } from "react";
+import type { EditorMode } from "@/types/editor-mode.types";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { TooltipAction } from "@/components/ui/tooltip-action";
 import { useRecording } from "@/hooks/RecordingContext";
@@ -18,6 +19,11 @@ interface ExtendedToolsSidebarProps extends ToolsSidebarProps {
     selectedVideoClipId?: string | null;
     selectedElementId?: string | null;
     newVideosCount?: number;
+    editorMode?: EditorMode;
+    // Photo mode props
+    onImageUpload?: (file: File) => void;
+    onScreenCapture?: () => void;
+    isCapturing?: boolean;
 }
 
 export function ToolsSidebar({
@@ -31,18 +37,28 @@ export function ToolsSidebar({
     selectedVideoClipId,
     selectedElementId,
     newVideosCount = 0,
+    editorMode = "video",
+    // Photo mode props
+    onImageUpload,
+    onScreenCapture,
+    isCapturing = false,
 }: ExtendedToolsSidebarProps) {
     const t = useTranslations("toolsSidebar");
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
     const zoomToolRef = useRef<HTMLButtonElement>(null);
     const audioToolRef = useRef<HTMLButtonElement>(null);
     const videosToolRef = useRef<HTMLButtonElement>(null);
     const cameraToolRef = useRef<HTMLButtonElement>(null);
     const elementsToolRef = useRef<HTMLButtonElement>(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [isImageDragging, setIsImageDragging] = useState(false);
     const { startCountdown, isIdle, isRecording, isCountdown, isProcessing } = useRecording();
     const [showMobileAlert, setShowMobileAlert] = useState(false);
     const [setupDialogOpen, setSetupDialogOpen] = useState(false);
+
+    // Determine if we're in photo mode to hide video-specific tools
+    const isPhotoMode = editorMode === "photo";
 
     useEffect(() => {
         if (newVideosCount > 0 && videosToolRef.current && activeTool !== "videos") {
@@ -91,6 +107,41 @@ export function ToolsSidebar({
     const handleUploadClick = () => {
         fileInputRef.current?.click();
     };
+
+    // Photo mode handlers
+    const handleImageFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && onImageUpload) {
+            onImageUpload(file);
+            e.target.value = '';
+        }
+    }, [onImageUpload]);
+
+    const handleImageUploadClick = useCallback(() => {
+        imageInputRef.current?.click();
+    }, []);
+
+    const handleImageDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isImageDragging) setIsImageDragging(true);
+    }, [isImageDragging]);
+
+    const handleImageDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsImageDragging(false);
+    }, []);
+
+    const handleImageDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsImageDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file && file.type.startsWith("image/") && onImageUpload) {
+            onImageUpload(file);
+        }
+    }, [onImageUpload]);
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -178,19 +229,22 @@ export function ToolsSidebar({
                         }}
                     />
 
-                    <SidebarTool
-                        icon="solar:video-library-outline"
-                        label={t("tools.videos")}
-                        isActive={activeTool === "videos"}
-                        onClick={() => onToolChange("videos")}
-                        ref={videosToolRef}
-                        badgeCount={activeTool !== "videos" ? newVideosCount : undefined}
-                        popover={{
-                            title: t("popovers.videos.title"),
-                            description: t("popovers.videos.description"),
-                            videoSrc: "/videos/preview-videos.mp4"
-                        }}
-                    />
+                    {/* Video-specific tools - hidden in photo mode */}
+                    {!isPhotoMode && (
+                        <SidebarTool
+                            icon="solar:video-library-outline"
+                            label={t("tools.videos")}
+                            isActive={activeTool === "videos"}
+                            onClick={() => onToolChange("videos")}
+                            ref={videosToolRef}
+                            badgeCount={activeTool !== "videos" ? newVideosCount : undefined}
+                            popover={{
+                                title: t("popovers.videos.title"),
+                                description: t("popovers.videos.description"),
+                                videoSrc: "/videos/preview-videos.mp4"
+                            }}
+                        />
+                    )}
 
                     <SidebarTool
                         label={t("tools.elements")}
@@ -209,122 +263,202 @@ export function ToolsSidebar({
                             </svg>
                         }
                     />
+                    {isPhotoMode && (
 
-                    <SidebarTool
-                        icon="mdi:volume-high"
-                        label={t("tools.audio")}
-                        isActive={activeTool === "audio"}
-                        onClick={() => onToolChange("audio")}
-                        ref={audioToolRef}
-                        popover={{
-                            title: t("popovers.audio.title"),
-                            description: t("popovers.audio.description"),
-                            videoSrc: "/videos/preview-audio.mp4"
-                        }}
-                    />
+                        <SidebarTool
+                            icon="material-symbols:history"
+                            label={t("photo.library")}
+                            isActive={activeTool === "history"}
+                            onClick={() => onToolChange("history")}
+                            popover={{
+                                title: t("popovers.history.title"),
+                                description: t("popovers.history.description"),
+                                videoSrc: "/videos/preview-history.mp4"
+                            }}
+                        />
+                    )}
 
-                    <SidebarTool
-                        icon="iconamoon:zoom-in-bold"
-                        label={t("tools.zoom")}
-                        isActive={activeTool === "zoom"}
-                        onClick={() => onToolChange("zoom")}
-                        ref={zoomToolRef}
-                        popover={{
-                            title: t("popovers.zoom.title"),
-                            description: t("popovers.zoom.description"),
-                            videoSrc: "/videos/preview-zoom.mp4"
-                        }}
-                    />
+                    {!isPhotoMode && (
+                        <>
+                            <SidebarTool
+                                icon="mdi:volume-high"
+                                label={t("tools.audio")}
+                                isActive={activeTool === "audio"}
+                                onClick={() => onToolChange("audio")}
+                                ref={audioToolRef}
+                                popover={{
+                                    title: t("popovers.audio.title"),
+                                    description: t("popovers.audio.description"),
+                                    videoSrc: "/videos/preview-audio.mp4"
+                                }}
+                            />
 
-                    <SidebarTool
-                        icon="solar:videocamera-record-bold-duotone"
-                        label={t("tools.camera")}
-                        isActive={activeTool === "camera"}
-                        onClick={() => onToolChange("camera")}
-                        ref={cameraToolRef}
-                        popover={{
-                            title: t("popovers.camera.title"),
-                            description: t("popovers.camera.description"),
-                            videoSrc: "/videos/preview-camera.mp4"
-                        }}
-                    />
+                            <SidebarTool
+                                icon="iconamoon:zoom-in-bold"
+                                label={t("tools.zoom")}
+                                isActive={activeTool === "zoom"}
+                                onClick={() => onToolChange("zoom")}
+                                ref={zoomToolRef}
+                                popover={{
+                                    title: t("popovers.zoom.title"),
+                                    description: t("popovers.zoom.description"),
+                                    videoSrc: "/videos/preview-zoom.mp4"
+                                }}
+                            />
 
-                    <SidebarTool
-                        icon="solar:cursor-bold-duotone"
-                        label={t("tools.cursor")}
-                        isActive={activeTool === "cursor"}
-                        onClick={() => onToolChange("cursor")}
-                        badge={!isCursorEnabled ? t("tools.soon") : undefined}
-                        disabled={!isCursorEnabled}
-                    />
+                            <SidebarTool
+                                icon="solar:videocamera-record-bold-duotone"
+                                label={t("tools.camera")}
+                                isActive={activeTool === "camera"}
+                                onClick={() => onToolChange("camera")}
+                                ref={cameraToolRef}
+                                popover={{
+                                    title: t("popovers.camera.title"),
+                                    description: t("popovers.camera.description"),
+                                    videoSrc: "/videos/preview-camera.mp4"
+                                }}
+                            />
+
+                            <SidebarTool
+                                icon="solar:cursor-bold-duotone"
+                                label={t("tools.cursor")}
+                                isActive={activeTool === "cursor"}
+                                onClick={() => onToolChange("cursor")}
+                                badge={!isCursorEnabled ? t("tools.soon") : undefined}
+                                disabled={!isCursorEnabled}
+                            />
+                        </>
+                    )}
                     <div className="shrink-0 h-12" aria-hidden="true" />
                 </div>
 
-                <div
-                    className="w-full p-2 relative flex flex-col items-center gap-1 shrink-0"
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                >
-                    <div className="absolute -top-0.5 left-0 w-full border-t border-white/10" />
+                {!isPhotoMode && (
+                    <div
+                        className="w-full p-2 relative flex flex-col items-center gap-1 shrink-0"
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                    >
+                        <div className="absolute -top-0.5 left-0 w-full border-t border-white/10" />
 
-                    {showMobileAlert && (
-                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-300 z-50">
-                            {t("alerts.mobile")}
-                        </div>
-                    )}
+                        {showMobileAlert && (
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-300 z-50">
+                                {t("alerts.mobile")}
+                            </div>
+                        )}
 
-                    <TooltipAction label={isIdle ? t("recording.idle") : t("recording.inProgress")}>
-                        <button
-                            onClick={handleStartRecording}
-                            disabled={!isIdle}
-                            className={`w-full flex flex-col items-center text-center justify-center gap-1.5 p-2 rounded-xl cursor-pointer transition-all group border-2 border-transparent disabled:cursor-not-allowed ${!isIdle ? "opacity-70" : "hover:bg-red-500/10"}`}
-                        >
-                            <Icon icon={recordButtonContent.icon} width="24" height="24" className={`transition-colors ${recordButtonContent.className}`} />
-                            <span className={`text-xs font-medium transition-colors ${!isIdle ? recordButtonContent.className : "text-white/60 group-hover:text-red-400"}`}>
-                                {recordButtonContent.text}
-                            </span>
-                        </button>
-                    </TooltipAction>
+                        <TooltipAction label={isIdle ? t("recording.idle") : t("recording.inProgress")}>
+                            <button
+                                onClick={handleStartRecording}
+                                disabled={!isIdle}
+                                className={`w-full flex flex-col items-center text-center justify-center gap-1.5 p-2 rounded-xl cursor-pointer transition-all group border-2 border-transparent disabled:cursor-not-allowed ${!isIdle ? "opacity-70" : "hover:bg-red-500/10"}`}
+                            >
+                                <Icon icon={recordButtonContent.icon} width="24" height="24" className={`transition-colors ${recordButtonContent.className}`} />
+                                <span className={`text-xs font-medium transition-colors ${!isIdle ? recordButtonContent.className : "text-white/60 group-hover:text-red-400"}`}>
+                                    {recordButtonContent.text}
+                                </span>
+                            </button>
+                        </TooltipAction>
 
-                    <TooltipAction label={isUploading ? t("upload.tooltipUploading") : t("upload.tooltip")}>
-                        <button
-                            onClick={handleUploadClick}
-                            disabled={isUploading}
-                            className={`w-full flex flex-col items-center text-center justify-center gap-1.5 p-2 rounded-xl cursor-pointer transition-all group disabled:opacity-50 disabled:cursor-not-allowed border-2 ${isDragging ? "bg-blue-500/20 text-blue-400 border-dashed border-blue-400/50 scale-105" : "border-transparent text-white/60 hover:bg-blue-500/20 hover:text-blue-400"}
-              `}
-                        >
-                            {isUploading ? (
-                                <>
-                                    <Icon icon="svg-spinners:ring-resize" className="transition-transform duration-300" width="24" height="24" />
-                                    <span className="text-xs font-medium">{t("upload.buttonUploading")}</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Icon icon="mage:video-upload" className={`transition-transform duration-300 ${!isDragging && "group-hover:scale-105"}`} width="24" height="24" />
-                                    <span className="text-xs font-medium">
-                                        {isDragging ? t("upload.dropHere") : t("upload.button")}
-                                    </span>
-                                </>
-                            )}
-                        </button>
-                    </TooltipAction>
+                        <TooltipAction label={isUploading ? t("upload.tooltipUploading") : t("upload.tooltip")}>
+                            <button
+                                onClick={handleUploadClick}
+                                disabled={isUploading}
+                                className={`w-full flex flex-col items-center text-center justify-center gap-1.5 p-2 rounded-xl cursor-pointer transition-all group disabled:opacity-50 disabled:cursor-not-allowed border-2 ${isDragging ? "bg-blue-500/20 text-blue-400 border-dashed border-blue-400/50 scale-105" : "border-transparent text-white/60 hover:bg-blue-500/20 hover:text-blue-400"}`}
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <Icon icon="svg-spinners:ring-resize" className="transition-transform duration-300" width="24" height="24" />
+                                        <span className="text-xs font-medium">{t("upload.buttonUploading")}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon icon="mage:video-upload" className={`transition-transform duration-300 ${!isDragging && "group-hover:scale-105"}`} width="24" height="24" />
+                                        <span className="text-xs font-medium">
+                                            {isDragging ? t("upload.dropHere") : t("upload.button")}
+                                        </span>
+                                    </>
+                                )}
+                            </button>
+                        </TooltipAction>
 
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
-                        className="hidden"
-                        onChange={handleFileChange}
-                    />
-                </div>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+                            className="hidden"
+                            onChange={handleFileChange}
+                        />
+                    </div>
+                )}
+
+                {isPhotoMode && (
+                    <div
+                        className="w-full p-2 relative flex flex-col items-center gap-1 shrink-0"
+                        onDragOver={handleImageDragOver}
+                        onDragLeave={handleImageDragLeave}
+                        onDrop={handleImageDrop}
+                    >
+                        <div className="absolute -top-0.5 left-0 w-full border-t border-white/10" />
+
+                        <TooltipAction label={t("photo.captureTooltip")}>
+                            <button
+                                onClick={onScreenCapture}
+                                disabled={isCapturing}
+                                className={`w-full flex flex-col items-center text-center justify-center gap-1.5 p-2 rounded-xl cursor-pointer transition-all group border-2 border-transparent disabled:cursor-not-allowed ${isCapturing ? "opacity-70" : "hover:bg-cyan-500/10"}`}
+                            >
+                                <Icon
+                                    icon={isCapturing ? "svg-spinners:ring-resize" : "fluent:screenshot-20-regular"}
+                                    width="24"
+                                    height="24"
+                                    className={`transition-colors ${isCapturing ? "text-cyan-400" : "text-white/60 group-hover:text-cyan-400"}`}
+                                />
+                                <span className={`text-xs font-medium transition-colors ${isCapturing ? "text-cyan-400" : "text-white/60 group-hover:text-cyan-400"}`}>
+                                    {isCapturing ? t("photo.capturing") : t("photo.capture")}
+                                </span>
+                            </button>
+                        </TooltipAction>
+
+                        <TooltipAction label={t("photo.uploadTooltip")}>
+                            <button
+                                onClick={handleImageUploadClick}
+                                disabled={isUploading}
+                                className={`w-full flex flex-col items-center text-center justify-center gap-1.5 p-2 rounded-xl cursor-pointer transition-all group disabled:opacity-50 disabled:cursor-not-allowed border-2 ${isImageDragging ? "bg-blue-500/20 text-blue-400 border-dashed border-blue-400/50 scale-105" : "border-transparent text-white/60 hover:bg-blue-500/20 hover:text-blue-400"}`}
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <Icon icon="svg-spinners:ring-resize" className="transition-transform duration-300" width="24" height="24" />
+                                        <span className="text-xs font-medium">{t("photo.uploading")}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon icon="mage:image-upload" className={`transition-transform duration-300 ${!isImageDragging && "group-hover:scale-105"}`} width="24" height="24" />
+                                        <span className="text-xs font-medium">
+                                            {isImageDragging ? t("photo.dropHere") : t("photo.upload")}
+                                        </span>
+                                    </>
+                                )}
+                            </button>
+                        </TooltipAction>
+
+                        <input
+                            ref={imageInputRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif"
+                            className="hidden"
+                            onChange={handleImageFileChange}
+                        />
+                    </div>
+                )}
             </aside>
 
-            <RecordingSetupDialog
-                open={setupDialogOpen}
-                onClose={() => setSetupDialogOpen(false)}
-                onStart={(config) => startCountdown(config)}
-            />
+            {!isPhotoMode && (
+                <RecordingSetupDialog
+                    open={setupDialogOpen}
+                    onClose={() => setSetupDialogOpen(false)}
+                    onStart={(config) => startCountdown(config)}
+                />
+            )}
         </div>
     );
 }

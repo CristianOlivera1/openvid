@@ -19,7 +19,8 @@ import {
     ImageBackgroundSkeleton,
     ZoomFragmentEditorSkeleton,
     AudioMenuSkeleton,
-    VideosMenuSkeleton
+    VideosMenuSkeleton,
+    HistoryMenuSkeleton
 } from "../Skeleton";
 
 import { ElementsMenu } from "./ElementsMenu";
@@ -38,6 +39,7 @@ const WallpaperCatalogGrid = lazy(() => import("../WalpaperSections").then(mod =
 const MockupMenu = lazy(() => import("./MockupMenu").then(mod => ({ default: mod.MockupMenu })));
 const AudioMenu = lazy(() => import("./AudioMenu").then(mod => ({ default: mod.AudioMenu })));
 const VideosMenu = lazy(() => import("./VideosMenu").then(mod => ({ default: mod.VideosMenu })));
+const HistoryMenu = lazy(() => import("./HistoryMenu").then(mod => ({ default: mod.HistoryMenu })));
 
 interface ExtendedControlPanelProps extends ControlPanelProps {
     onTogglePanel?: () => void;
@@ -122,6 +124,14 @@ export function ControlPanel({
     cameraUrl = null,
     cameraConfig = null,
     onCameraConfigChange,
+    // History/Image projects props
+    imageProjects = [],
+    currentImageProjectId = null,
+    isLoadingProjects = false,
+    onSelectImageProject,
+    onAddImageToCanvas,
+    onDeleteImageProject,
+    onUploadImageToHistory,
 }: ExtendedControlPanelProps) {
 
     const t = useTranslations("controlPanel");
@@ -361,6 +371,20 @@ export function ControlPanel({
                         cameraConfig={cameraConfig}
                         onCameraConfigChange={onCameraConfigChange || (() => { })}
                     />
+                )}
+
+                {activeTool === "history" && (
+                    <Suspense fallback={<HistoryMenuSkeleton />}>
+                        <HistoryMenu
+                            projects={imageProjects || []}
+                            currentProjectId={currentImageProjectId}
+                            isLoading={isLoadingProjects}
+                            onSelectProject={onSelectImageProject || (() => { })}
+                            onAddToCanvas={onAddImageToCanvas || (() => { })}
+                            onDeleteProject={onDeleteImageProject || (() => { })}
+                            onUploadToHistory={onUploadImageToHistory || (() => { })}
+                        />
+                    </Suspense>
                 )}
             </div>
         </div>

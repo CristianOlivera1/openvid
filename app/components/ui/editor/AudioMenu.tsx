@@ -2,53 +2,13 @@
 
 import { Icon } from "@iconify/react";
 import { useCallback, useRef, useState, useEffect } from "react";
-import type { AudioTrack, UploadedAudio } from "@/types/audio.types";
+import type { AudioMenuProps, AudioTrack } from "@/types/audio.types";
 import { SliderControl } from "../SliderControl";
 import { AudioTrimModal } from "./AudioTrimModal";
 import { Button } from "@/components/ui/button";
 import { TooltipAction } from "@/components/ui/tooltip-action";
-
-interface AudioMenuProps {
-    audioTracks: AudioTrack[];
-    uploadedAudios: UploadedAudio[];
-    muteOriginalAudio: boolean;
-    masterVolume: number;
-    videoDuration: number;
-    onAudioUpload: (file: File) => void;
-    onUpdateAudioTrack: (trackId: string, updates: Partial<AudioTrack>) => void;
-    onDeleteAudioTrack: (trackId: string) => void;
-    onToggleMuteOriginalAudio: () => void;
-    onMasterVolumeChange: (volume: number) => void;
-}
-
-function TrackVolumeSlider({ track, onUpdateAudioTrack }: {
-    track: AudioTrack;
-    onUpdateAudioTrack: (id: string, updates: Partial<AudioTrack>) => void;
-}) {
-    const [internalVolume, setInternalVolume] = useState(track.volume * 100);
-
-    useEffect(() => {
-        const externalValue = track.volume * 100;
-        if (Math.abs(internalVolume - externalValue) > 1) {
-            setInternalVolume(externalValue);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [track.volume]);
-
-    return (
-        <SliderControl
-            icon="mdi:volume-medium"
-            label="Volumen"
-            value={internalVolume}
-            min={0}
-            max={100}
-            onChange={(value: number) => {
-                setInternalVolume(value);
-                onUpdateAudioTrack(track.id, { volume: value / 100 });
-            }}
-        />
-    );
-}
+import { TrackVolumeSlider } from "@/components/ui/TrackVolumeSlider";
+import { useTranslations } from "next-intl";
 
 export function AudioMenu({
     audioTracks,
@@ -62,6 +22,7 @@ export function AudioMenu({
     onToggleMuteOriginalAudio,
     onMasterVolumeChange,
 }: AudioMenuProps) {
+    const t = useTranslations("audioMenu");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
     const [trimModalOpen, setTrimModalOpen] = useState(false);
@@ -149,7 +110,7 @@ export function AudioMenu({
         <div className="p-4 flex flex-col gap-5">
             <div className="flex items-center gap-2 text-white font-medium">
                 <Icon icon="mdi:volume-high" width="20" />
-                <span>Audio</span>
+                <span>{t("title")}</span>
             </div>
 
             <div className="bg-[#09090B] border border-white/5 squircle-element p-3">
@@ -162,20 +123,20 @@ export function AudioMenu({
                             width="18"
                             className={muteOriginalAudio ? "text-red-400" : "text-blue-400"}
                         />
-                        <span>Audio original</span>
+                        <span>{t("originalAudio")}</span>
                     </div>
                     <div className={`px-2 py-0.5 rounded text-xs font-medium ${muteOriginalAudio
                         ? "bg-red-500/20 text-red-400"
                         : "bg-blue-500/20 text-blue-400"
                         }`}>
-                        {muteOriginalAudio ? "Silenciado" : "Activo"}
+                        {muteOriginalAudio ? t("muted") : t("active")}
                     </div>
                 </button>
             </div>
 
             <SliderControl
                 icon="mdi:volume-medium"
-                label="Volumen maestro"
+                label={t("masterVolume")}
                 value={internalMasterVolume}
                 min={0}
                 max={100}
@@ -205,10 +166,10 @@ export function AudioMenu({
                     onClick={() => fileInputRef.current?.click()}
                 >
                     <Icon icon="mdi:upload" width="14" />
-                    <span>Subir audio</span>
+                    <span>{t("uploadButton")}</span>
                 </Button>
                 <p className="text-xs text-white/40 mt-2 text-center">
-                    MP3, WAV, OGG, AAC, M4A (max 10MB)
+                    {t("uploadHint")}
                 </p>
             </div>
 
@@ -216,7 +177,7 @@ export function AudioMenu({
                 <div className="flex flex-col gap-2">
                     <div className="text-xs font-medium text-white/60 flex items-center gap-2">
                         <Icon icon="mdi:timeline-clock" width="14" />
-                        <span>PISTAS EN LÍNEA DE TIEMPO ({audioTracks.length})</span>
+                        <span>{t("timelineTracks", { count: audioTracks.length })}</span>
                     </div>
                     <div className="flex flex-col gap-2">
                         {audioTracks.map((track) => {
@@ -238,17 +199,17 @@ export function AudioMenu({
                                                 {track.name}
                                             </div>
                                             <div className="text-xs text-white/40 mt-0.5">
-                                                Inicio: {formatDuration(track.startTime)} • Duración: {formatDuration(track.duration)}
+                                                {t("start")}: {formatDuration(track.startTime)} • {t("duration")}: {formatDuration(track.duration)}
                                             </div>
                                             {exceedsVideoDuration && (
                                                 <div className="text-xs text-orange-400 mt-1 flex items-center gap-1">
                                                     <Icon icon="mdi:alert" width="12" />
-                                                    Excede duración del video
+                                                    {t("exceedsDuration")}
                                                 </div>
                                             )}
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            <TooltipAction label="Recortar audio">
+                                            <TooltipAction label={t("trimAction")}>
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -260,7 +221,7 @@ export function AudioMenu({
                                                     <Icon icon="mdi:content-cut" width="16" />
                                                 </button>
                                             </TooltipAction>
-                                            <TooltipAction label="Eliminar audio">
+                                            <TooltipAction label={t("deleteAction")}>
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -295,10 +256,11 @@ export function AudioMenu({
             {audioTracks.length === 0 && (
                 <div className="text-center py-8 px-4 text-white/40">
                     <Icon icon="mdi:music-note-off" width="48" className="mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">No hay pistas de audio</p>
-                    <p className="text-xs mt-1">Sube un archivo de audio para añadirlo automáticamente a la línea de tiempo</p>
+                    <p className="text-sm">{t("noTracks")}</p>
+                    <p className="text-xs mt-1">{t("noTracksHint")}</p>
                 </div>
             )}
+
             {trimModalOpen && trimModalTrack && (() => {
                 const originalAudio = uploadedAudios.find(a => a.id === trimModalTrack.audioId);
                 if (!originalAudio) return null;

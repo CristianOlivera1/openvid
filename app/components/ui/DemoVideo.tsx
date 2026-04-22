@@ -40,7 +40,7 @@ export default function DemoVideo() {
     }, [features.length]);
 
     return (
-        <div className="w-full flex flex-col items-center mb-30">
+        <div className="w-full flex flex-col items-center pb-30">
             <h2 className="text-4xl md:text-6xl text-center font-bold tracking-tighter text-white mb-10 leading-tight drop-shadow-[1.2px_1.2px_100.2px_rgba(183,203,248,1)]">
                 {t('title')} <br />
                 <span className="bg-linear-to-r from-[#003780] to-white bg-clip-text text-transparent">
