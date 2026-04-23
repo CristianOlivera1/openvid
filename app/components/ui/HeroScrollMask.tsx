@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Icon } from "@iconify/react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -14,10 +13,7 @@ const floatImages = [
   { src: "/images/scroll/sould.avif", pos: "top-[40%] left-[2%] md:left-[4%]", size: "w-[15vw] min-w-[120px]" },
   { src: "/images/scroll/hapyrobot.avif", pos: "bottom-[10%] sm:bottom-[1%] sm:left-[2%] md:left-[20%]", size: "w-[15vw] min-w-[120px]" },
   { src: "/images/scroll/shadcn.avif", pos: "top-[20%] left-1/2 -translate-x-1/2 sm:top-[1%] sm:left-1/2 sm:-translate-x-1/2", size: "w-[24vw] min-w-[180px]" },
-  {
-    src: "/images/scroll/godly.avif", pos: "bottom-[30%] left-1/2 -translate-x-1/2 sm:bottom-[5%] sm:left-[40%] sm:-translate-x-1/2",
-    size: "w-[35vw] min-w-[150px] sm:w-[22vw] shadow-[0_0_100px_rgba(0,156,242,0.1)]"
-  },
+  { src: "/images/scroll/godly.avif", pos: "bottom-[30%] left-1/2 -translate-x-1/2 sm:bottom-[5%] sm:left-[40%] sm:-translate-x-1/2", size: "w-[35vw] min-w-[150px] sm:w-[22vw] shadow-[0_0_100px_rgba(0,156,242,0.1)]" },
   { src: "/images/scroll/powered.avif", pos: "top-[5%] right-[2%] md:right-[5%]", size: "w-[15vw] min-w-[120px]" },
   { src: "/images/scroll/vscode.avif", pos: "top-[40%] right-[2%] md:right-[2%]", size: "w-[24vw] min-w-[180px]" },
   { src: "/images/scroll/daily.avif", pos: "bottom-[15%] sm:bottom-[8%] right-[2%] md:right-[15%]", size: "w-[19vw] min-w-[150px]" },
@@ -29,54 +25,53 @@ export function HeroScrollMask() {
   const t = useTranslations('demo');
   const pinContainerRef = useRef<HTMLDivElement>(null);
   const brandRef = useRef<HTMLSpanElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null); // <- Vuelve a ser HTMLVideoElement
+  const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const textContainerRef = useRef<HTMLDivElement>(null);
-
+  
   const [featureIndex, setFeatureIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const features = t.raw('features') as string[];
 
   useEffect(() => {
-    const featureInterval = setInterval(() => {
-      setFeatureIndex((prevIndex) => (prevIndex + 1) % features.length);
+    if (!features?.length) return;
+    
+    const interval = setInterval(() => {
+      setIsTransitioning(true);
+      
+      setTimeout(() => {
+        setFeatureIndex((prev) => (prev + 1) % features.length);
+        setIsTransitioning(false);
+      }, 400); 
+      
     }, 3000);
-    return () => clearInterval(featureInterval);
-  }, [features?.length]);
+    
+    return () => clearInterval(interval);
+  }, [features]);
 
   useEffect(() => {
     const mm = gsap.matchMedia();
+
     mm.add({
       isDesktop: "(min-width: 768px)",
       isMobile: "(max-width: 767px)"
     }, (context) => {
       const conditions = context.conditions as { isMobile: boolean; isDesktop: boolean } | undefined;
       const isMobile = !!conditions?.isMobile;
+
       const timeline = gsap.timeline({ defaults: { ease: "none" } });
+
       timeline.set(containerRef.current, { visibility: "visible" }, 2.5);
 
-      // 2. Animamos la opacidad del video (como lo tenías originalmente)
-      timeline.fromTo(
-        videoRef.current,
-        { opacity: 0, scale: 1.1 },
-        { opacity: 1, duration: 0.2, scale: 1.1, ease: "power3.inOut" },
-        2.5
-      );
-      timeline.to(
-        ".floating-image",
-        {
-          x: (i) => (i % 2 === 0 ? "-120vw" : "120vw"),
-          y: (i) => (i < floatImages.length / 2 ? "-120vh" : "120vh"),
-          scale: 2.5,
-          opacity: 0,
-          stagger: {
-            each: 0.15,
-            from: "center",
-          },
-          duration: 3,
-          ease: "power3.inOut",
-        },
-        0
-      );
+      timeline.to(".floating-image", {
+        x: (i) => (i % 2 === 0 ? "-120vw" : "120vw"),
+        y: (i) => (i < floatImages.length / 2 ? "-120vh" : "120vh"),
+        scale: 2.5,
+        opacity: 0,
+        stagger: { each: 0.15, from: "center" },
+        duration: 3,
+        ease: "power3.inOut",
+      }, 0);
 
       timeline.fromTo(
         brandRef.current,
@@ -84,18 +79,19 @@ export function HeroScrollMask() {
         {
           yPercent: -50,
           xPercent: isMobile ? 50 : 150,
-          scale: isMobile ? 2500 : 1100,
+          scale: isMobile ? 300 : 150, 
           duration: 5,
           ease: "power2.inOut",
         },
         2
       )
-        .to(brandRef.current, {
-          backgroundColor: "black",
-          color: "white",
-          mixBlendMode: "multiply",
-          duration: 0
-        }, 2.5);
+      .to(brandRef.current, { 
+        backgroundColor: "black", 
+        color: "white", 
+        mixBlendMode: "multiply", 
+        duration: 0 
+      }, 2.5)
+      .to(brandRef.current, { opacity: 0, duration: 0.5 }, 4.5);
 
       timeline.fromTo(
         videoRef.current,
@@ -130,24 +126,18 @@ export function HeroScrollMask() {
       className="relative z-0 h-[calc(100svh-80px)] overflow-hidden bg-gradient-radial-primary transparent"
     >
       <div className="relative w-full h-svh overflow-hidden z-0 bg-transparent">
-
         {floatImages.map((img, id) => (
           <div
             key={id}
-            className={`floating-image absolute squircle-element-camera overflow-hidden z-10 
-      shadow-[-15px_-25px_60px_-30px_rgba(0,163,255,0.35)] 
-      border border-white/10 backdrop-blur-md ${img.pos} ${img.size} 
-      transition-all duration-700`}
+            className={`floating-image absolute squircle-element-camera overflow-hidden z-10 shadow-[-15px_-25px_60px_-30px_rgba(0,163,255,0.35)] border border-white/10 backdrop-blur-md will-change-transform ${img.pos} ${img.size} transition-all duration-700`}
           >
             <div className="relative w-full h-full bg-[#0a0a0a]">
               <div className="absolute inset-0 bg-linear-to-tr from-white/5 to-transparent z-0" />
-
               <img
                 src={img.src}
                 alt={`demo-${id}`}
                 className="w-full h-full block object-cover z-10 contrast-[1.1] brightness-[0.9] saturate-[1.2]"
               />
-
               <div
                 className="pointer-events-none absolute inset-0 z-20"
                 style={{
@@ -155,39 +145,32 @@ export function HeroScrollMask() {
                   mixBlendMode: 'overlay',
                 }}
               />
-
               <div className="pointer-events-none absolute inset-0 z-30 border-t border-white/20" />
             </div>
           </div>
         ))}
 
         <div className="absolute inset-0 z-10 flex flex-col justify-center items-center text-center gap-6">
-
           <div
             ref={textContainerRef}
             className="absolute top-2 right-2 sm:top-2 sm:right-6 md:top-14 md:right-8 z-40 pointer-events-none select-none opacity-0"
           >
             <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-xl md:rounded-2xl px-1 py-1 md:px-6 md:py-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col items-end min-w-45 sm:min-w-65 md:min-w-[320px]">
+              
               <div className="h-2 md:h-6 w-full flex items-center justify-end overflow-hidden px-1">
-                <AnimatePresence mode="wait">
-                  <motion.h2
-                    key={featureIndex}
-                    initial={{ y: 30, opacity: 0, skewY: 10 }}
-                    animate={{ y: 0, opacity: 1, skewY: 0 }}
-                    exit={{ y: -30, opacity: 0, skewY: -10 }}
-                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                    className="text-[10px] sm:text-xl md:text-2xl font-black text-white italic tracking-tighter drop-shadow-[0_8px_8px_rgba(0,0,0,0.5)] uppercase whitespace-nowrap"
-                  >
-                    {features[featureIndex]}
-                  </motion.h2>
-                </AnimatePresence>
+                <h2 
+                  className={`text-[10px] sm:text-xl md:text-2xl font-black text-white italic tracking-tighter drop-shadow-[0_8px_8px_rgba(0,0,0,0.5)] uppercase whitespace-nowrap transition-all duration-400 ease-in-out ${
+                    isTransitioning ? "opacity-0 translate-y-4 skew-y-6" : "opacity-100 translate-y-0 skew-y-0"
+                  }`}
+                >
+                  {features?.[featureIndex]}
+                </h2>
               </div>
-              <motion.div
-                key={`line-${featureIndex}`}
-                initial={{ width: 0 }}
-                animate={{ width: '100%' }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="h-px md:h-1 bg-linear-to-r from-transparent via-blue-500 to-blue-400 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+              
+              <div 
+                className={`h-px md:h-1 bg-linear-to-r from-transparent via-blue-500 to-blue-400 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-500 origin-right ${
+                  isTransitioning ? "scale-x-0 opacity-0" : "scale-x-100 opacity-100"
+                } w-full`} 
               />
             </div>
           </div>
@@ -197,7 +180,13 @@ export function HeroScrollMask() {
               ref={brandRef}
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-full h-full flex justify-center items-center text-center bg-transparent mix-blend-screen pointer-events-none text-white"
             >
-              <svg className="w-[80vw] max-w-150 h-auto mask-b-from-30% mask-b-to-99%" viewBox="0 0 633 194" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                className="w-[80vw] max-w-150 h-auto mask-b-from-30% mask-b-to-99%"
+                viewBox="0 0 633 194"
+                fill="currentColor"
+                xmlns="http://www.w3.org/2000/svg"
+                shapeRendering="geometricPrecision"
+              >
                 <path d="M103.134 107.981C105.925 92.1435 108.265 76.576 119.01 64.0971C133.912 46.7914 152.731 40.9116 174.689 46.2879C189.665 49.9545 197.837 60.7065 200.746 75.4457C205.842 101.264 189.119 130.568 164.479 139.231C149.37 144.542 135.044 144.252 122.367 132.11C119.577 137.387 119.396 142.908 118.307 148.111C115.621 160.949 113.22 173.851 110.987 186.776C110.202 191.321 108.429 193.524 103.5 192.916C98.2726 192.272 92.937 193.678 86.6763 192.498C92.1625 164.281 97.5956 136.338 103.134 107.981ZM142.28 120.621C151.263 122.549 159.131 120.209 165.869 114.153C173.693 107.121 177.764 98.0974 178.261 87.727C179.029 71.718 166.749 62.241 151.289 66.5312C138.427 70.1006 127.944 85.102 127.981 99.8879C128.006 110.294 132.318 116.812 142.28 120.621Z" />
                 <path d="M603.442 121.106C589.992 136.993 573.365 144.444 552.834 141.813C532.672 139.229 519.379 123.784 519.725 103.273C520.039 84.7037 526.768 68.7806 541.11 56.6562C553.84 45.8935 568.43 41.9106 584.879 46.1438C590.462 47.5807 594.936 51.038 599.799 54.8294C602.823 44.2583 604.179 33.907 606.33 23.7337C607.669 17.3979 608.913 11.0394 610.048 4.66424C610.512 2.05885 611.768 0.988612 614.419 1.05772C619.081 1.17922 623.754 1.20797 628.414 1.04402C632.234 0.909572 633.365 2.29144 632.608 6.1293C628.845 25.2024 625.303 44.3191 621.628 63.41C619.525 74.3398 617.297 85.2455 615.163 96.1696C613.371 105.347 609.338 113.465 603.442 121.106ZM550.928 77.1706C547.366 81.8927 545.046 87.1389 543.802 92.9448C541.439 103.974 544.721 113.728 552.614 118.494C560.989 123.551 572.465 121.925 580.814 114.526C588.136 108.037 592.156 99.8021 593.249 90.2027C595.111 73.843 584.489 63.2459 568.875 65.8489C561.657 67.0522 556.055 71.1476 550.928 77.1706Z" />
                 <path d="M228.253 138.133C210.379 127.671 203.62 110.332 208.637 88.4852C214.419 63.3067 235.448 45.2571 261.264 44.4367C281.948 43.7793 299.766 54.0981 302.52 77.6562C303.049 82.176 301.757 83.8384 297.588 85.0055C277.094 90.7435 256.676 96.7522 236.235 102.677C234.35 103.223 232.32 103.429 230.765 104.749C231.68 116.809 244.023 124.821 256.799 121.579C264.75 119.561 271.07 115.091 274.861 107.726C276.475 104.589 278.596 103.37 281.934 103.424C287.531 103.514 293.131 103.449 298.812 103.449C295.886 126.521 262.283 152.852 228.253 138.133ZM233.818 85.323C238.546 85.2204 242.833 83.2546 247.287 82.0462C257.147 79.3711 266.942 76.4543 276.785 73.6299C274.596 67.3805 267.363 63.4057 259.706 63.8475C246.96 64.5829 235.604 73.669 233.818 85.323Z" />
@@ -208,6 +197,7 @@ export function HeroScrollMask() {
                 <path d="M503.501 20.1523C500.655 10.8349 505.164 2.46105 513.757 0.411426C522.202 -1.60279 528.731 3.9868 528.028 12.6294C527.577 18.1794 523.214 23.1626 517.215 24.9798C511.545 26.6973 507.717 25.4373 503.501 20.1523Z" />
               </svg>
             </span>
+
             <div
               ref={containerRef}
               className="absolute inset-0 w-full h-full z-10 overflow-hidden flex flex-col justify-center items-center bg-black invisible"
@@ -222,11 +212,10 @@ export function HeroScrollMask() {
               >
                 <source src="/images/pages/demo-scroll.mp4" type="video/mp4" />
               </video>
-
               <div className="absolute bottom-0 left-0 right-0 h-40 z-20 bg-linear-to-t from-[#0B0B0B] via-[#0B0B0B]/80 to-transparent pointer-events-none" />
             </div>
-
           </h2>
+
           <p className="absolute bottom-10 z-30 text-white/80 font-semibold text-4xl">
             <Icon icon="iconoir:mouse-scroll-wheel" />
           </p>
