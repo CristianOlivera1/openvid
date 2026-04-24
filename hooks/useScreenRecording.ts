@@ -17,8 +17,6 @@ function generateVideoId(): string {
   return `vid_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
-// Delete the currentVideo record if it is older than 7 days.
-// openvidDB is only a recording→editor handoff cache; stale blobs waste storage.
 async function cleanupOldRecording(db: IDBDatabase): Promise<void> {
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
   const cutoff = Date.now() - SEVEN_DAYS_MS;
