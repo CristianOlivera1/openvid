@@ -670,11 +670,13 @@ export default function Editor() {
 
             const hasTransparentBackground = selectedWallpaper === -1;
 
-            // Temporarily deselect to exclude selection borders from the captured image
-            const prevSelection = selectedElementId;
-            if (prevSelection) selectCanvasElement(null);
+            // Temporarily clear ALL selection indicators (single, multi, and mockup border)
+            // so they don't appear in the html-to-image capture
+            const prevSingleSelection = selectedElementId;
+            selectCanvasElement(null);
+            const prevSelectionState = canvasRef.current?.clearAllSelection?.();
 
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 80));
 
             const blob = await toBlob(previewContainer, {
                 quality,
@@ -686,8 +688,9 @@ export default function Editor() {
                 pixelRatio: 1,
             });
 
-            // Restore selection after capture
-            if (prevSelection) selectCanvasElement(prevSelection);
+            // Restore all selection state after capture
+            if (prevSingleSelection) selectCanvasElement(prevSingleSelection);
+            if (prevSelectionState) canvasRef.current?.restoreSelectionState?.(prevSelectionState);
 
             originalSrcs.forEach((originalSrc, img) => {
                 img.src = originalSrc;
@@ -987,9 +990,11 @@ export default function Editor() {
         ));
     }, []);
 
-    const deleteCanvasElement = useCallback((id: string) => {
-        setCanvasElements(prev => prev.filter(el => el.id !== id));
-        setSelectedElementId(prev => prev === id ? null : prev);
+    const deleteCanvasElement = useCallback((idOrIds: string | string[]) => {
+        const idsToDelete = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+        const idsSet = new Set(idsToDelete);
+        setCanvasElements(prev => prev.filter(el => !idsSet.has(el.id)));
+        setSelectedElementId(prev => prev && idsSet.has(prev) ? null : prev);
     }, []);
 
     const [copiedElement, setCopiedElement] = useState<CanvasElement | null>(null);
@@ -2791,22 +2796,23 @@ export default function Editor() {
                         )}
                     </AnimatePresence>
 
-                    <EditorTopBar
-                        onExport={handleExport}
-                        exportProgress={exportProgress}
-                        hasTransparentBackground={selectedWallpaper === -1}
-                        onUndo={undo}
-                        onRedo={redo}
-                        canUndo={canUndo}
-                        canRedo={canRedo}
-                        editorMode={editorMode}
-                        onImageExport={handleImageExport}
-                        imageExportProgress={imageExportProgress}
-                        canvasWidth={customAspectRatio?.width || 1920}
-                        canvasHeight={customAspectRatio?.height || 1080}
-                    />
-
                     <VideoCanvas
+                        layersPanelToolbar={
+                            <EditorTopBar
+                                onExport={handleExport}
+                                exportProgress={exportProgress}
+                                hasTransparentBackground={selectedWallpaper === -1}
+                                onUndo={undo}
+                                onRedo={redo}
+                                canUndo={canUndo}
+                                canRedo={canRedo}
+                                editorMode={editorMode}
+                                onImageExport={handleImageExport}
+                                imageExportProgress={imageExportProgress}
+                                canvasWidth={customAspectRatio?.width || 1920}
+                                canvasHeight={customAspectRatio?.height || 1080}
+                            />
+                        }
                         ref={canvasRef}
                         videoUrl={videoUrl}
                         videoRef={videoRef}
@@ -2849,6 +2855,7 @@ export default function Editor() {
                         selectedElementId={selectedElementId}
                         onElementUpdate={updateCanvasElement}
                         onElementSelect={selectCanvasElement}
+                        onElementDelete={deleteCanvasElement}
                         cameraUrl={effectiveCameraUrl}
                         cameraConfig={cameraConfig}
                         onCameraConfigChange={handleCameraConfigChange}
