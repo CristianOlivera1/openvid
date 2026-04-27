@@ -1,8 +1,78 @@
 import { SVG_COMPONENTS } from "@/components/canvas-svg";
 import { RotationHandleIcon } from "@/components/ui/RotationHandleIcon";
 import { Corner, VIDEO_Z_INDEX, getNearestCorner, getCornerStyle } from "@/lib";
-import { CanvasElement, SvgElement, ImageElement } from "@/types/canvas-elements.types";
+import { CanvasElement, SvgElement, ImageElement, TextElement } from "@/types/canvas-elements.types";
 import { useRef, useState, useEffect, useCallback } from "react";
+
+function InlineTextEditor({
+    element,
+    refSize,
+    onEnd,
+}: {
+    element: TextElement;
+    refSize: number;
+    onEnd: (content: string) => void;
+}) {
+    const divRef = useRef<HTMLDivElement>(null);
+    const committed = useRef(false);
+
+    const commit = useCallback((node: HTMLElement) => {
+        if (committed.current) return;
+        committed.current = true;
+        onEnd(node.textContent ?? "");
+    }, [onEnd]);
+
+    useEffect(() => {
+        const node = divRef.current;
+        if (!node) return;
+        node.textContent = element.content;
+        node.focus();
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const fontSize = refSize > 0 ? element.fontSize * (refSize / 1080) : element.fontSize;
+
+    return (
+        <div
+            ref={divRef}
+            contentEditable
+            suppressContentEditableWarning
+            spellCheck={false}
+            style={{
+                fontSize: `${fontSize}px`,
+                fontFamily: element.fontFamily,
+                fontWeight: element.fontWeight === "normal" ? 400 : element.fontWeight === "medium" ? 500 : 700,
+                color: element.color,
+                opacity: element.opacity,
+                outline: "none",
+                border: "1.5px solid #3b82f6",
+                borderRadius: "3px",
+                padding: "2px 6px",
+                whiteSpace: "pre",
+                minWidth: "20px",
+                cursor: "text",
+                pointerEvents: "auto",
+                background: "transparent",
+                lineHeight: 1.2,
+                letterSpacing: "normal",
+                userSelect: "text",
+            }}
+            onBlur={(e) => commit(e.currentTarget)}
+            onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Escape") { e.preventDefault(); commit(e.currentTarget); }
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commit(e.currentTarget); }
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+        />
+    );
+}
 
 export function CanvasElementsLayer({
     canvasContainerRef,
@@ -23,6 +93,9 @@ export function CanvasElementsLayer({
     hitTestOnly = false,
     elementCorners: elementCornersProp,
     setElementCorners: setElementCornersProp,
+    editingTextId = null,
+    onDoubleClickText,
+    onTextEditEnd,
 }: {
     canvasContainerRef?: React.RefObject<HTMLDivElement | null>;
     canvasElements: CanvasElement[];
@@ -42,6 +115,9 @@ export function CanvasElementsLayer({
     hitTestOnly?: boolean;
     elementCorners?: Record<string, Corner | null>;
     setElementCorners?: React.Dispatch<React.SetStateAction<Record<string, Corner | null>>>;
+    editingTextId?: string | null;
+    onDoubleClickText?: (id: string) => void;
+    onTextEditEnd?: (id: string, content: string) => void;
 }) {
     const layerRef = useRef<HTMLDivElement>(null);
     const [refSize, setRefSize] = useState(0);
@@ -197,6 +273,7 @@ export function CanvasElementsLayer({
 
                 if (hitTestOnly) {
                     if (element.visible === false) return null;
+                    if (editingTextId === element.id) return null;
 
                     const TOP_Z_INDEX = 2147483647;
 
@@ -227,6 +304,11 @@ export function CanvasElementsLayer({
                                 onMouseLeave={handleMouseLeave}
                                 onMouseMove={handleMouseMove}
                                 onMouseDown={handleMouseDown}
+                                onDoubleClick={(e) => {
+                                    if (element.locked) return;
+                                    e.stopPropagation();
+                                    if (onDoubleClickText) onDoubleClickText(element.id);
+                                }}
                             >
                                 {expandedHitArea}
 
@@ -307,32 +389,46 @@ export function CanvasElementsLayer({
                 }
 
                 if (element.type === "text") {
+                    const isEditing = editingTextId === element.id;
                     return (
                         <div
                             key={element.id}
-                            className="absolute pointer-events-none"
+                            className="absolute"
                             style={{
                                 left: `${element.x}%`,
                                 top: `${element.y}%`,
                                 transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
-                                zIndex: element.zIndex,
+                                zIndex: isEditing ? 9999 : element.zIndex,
                                 transition: isDraggingElement ? 'none' : 'transform 0.1s ease-out',
+                                pointerEvents: isEditing ? 'auto' : 'none',
                             }}
                         >
-                            <div
-                                className="whitespace-nowrap"
-                                style={{
-                                    fontSize: refSize > 0 ? `${element.fontSize * (refSize / 1080)}px` : `${element.fontSize}px`,
-                                    fontFamily: element.fontFamily,
-                                    fontWeight: element.fontWeight === 'normal' ? 400 : element.fontWeight === 'medium' ? 500 : 700,
-                                    textAlign: 'center',
-                                    color: element.color,
-                                    pointerEvents: 'none',
-                                    opacity: element.opacity,
-                                }}
-                            >
-                                {element.content}
-                            </div>
+                            {isEditing ? (
+                                <InlineTextEditor
+                                    element={element as TextElement}
+                                    refSize={refSize}
+                                    onEnd={(content) => {
+                                        if (onTextEditEnd) onTextEditEnd(element.id, content);
+                                    }}
+                                />
+                            ) : (
+                                <div
+                                    className="whitespace-nowrap"
+                                    style={{
+                                        fontSize: refSize > 0 ? `${element.fontSize * (refSize / 1080)}px` : `${element.fontSize}px`,
+                                        fontFamily: element.fontFamily,
+                                        fontWeight: element.fontWeight === 'normal' ? 400 : element.fontWeight === 'medium' ? 500 : 700,
+                                        textAlign: 'left',
+                                        color: element.color,
+                                        pointerEvents: 'none',
+                                        opacity: element.opacity,
+                                        lineHeight: 1.2,
+                                        padding: '2px 6px',
+                                    }}
+                                >
+                                    {element.content}
+                                </div>
+                            )}
                         </div>
                     );
                 }

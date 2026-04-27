@@ -73,6 +73,9 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     onCameraClick,
     videoMaskConfig,
     layersPanelToolbar,
+    textToolActive = false,
+    onTextToolDeactivate,
+    onAddElement,
 }, ref) {
     const wallpaperUrl = getWallpaperUrl(selectedWallpaper);
 
@@ -270,6 +273,9 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     // Drag & drop state for images (photo mode only)
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     const canvasContainerRef = useRef<HTMLDivElement>(null);
+
+    // Inline text editing (Figma-style)
+    const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
     // Multi-select and canvas right-click context menu
     const [canvasSelectedIds, setCanvasSelectedIds] = useState<string[]>([]);
@@ -1524,6 +1530,12 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                     layerZIndex={1}
                                     elementCorners={elementCorners}
                                     setElementCorners={setElementCorners}
+                                    editingTextId={editingTextId}
+                                    onTextEditEnd={(id, content) => {
+                                        if (!content.trim()) { if (onElementDelete) onElementDelete(id); }
+                                        else { if (onElementUpdate) onElementUpdate(id, { content }); }
+                                        setEditingTextId(null);
+                                    }}
                                 />
 
                                 {/* 3D rotation layer — solo envuelve el mockup, el fondo queda plano */}
@@ -1747,6 +1759,12 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                     layerZIndex={3}
                                     elementCorners={elementCorners}
                                     setElementCorners={setElementCorners}
+                                    editingTextId={editingTextId}
+                                    onTextEditEnd={(id, content) => {
+                                        if (!content.trim()) { if (onElementDelete) onElementDelete(id); }
+                                        else { if (onElementUpdate) onElementUpdate(id, { content }); }
+                                        setEditingTextId(null);
+                                    }}
                                 />
 
                                 {/* Capa HIT: invisible, todos los elementos, para recibir eventos */}
@@ -1782,6 +1800,13 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                     hitTestOnly={true}
                                     elementCorners={elementCorners}
                                     setElementCorners={setElementCorners}
+                                    editingTextId={editingTextId}
+                                    onDoubleClickText={(id) => setEditingTextId(id)}
+                                    onTextEditEnd={(id, content) => {
+                                        if (!content.trim()) { if (onElementDelete) onElementDelete(id); }
+                                        else { if (onElementUpdate) onElementUpdate(id, { content }); }
+                                        setEditingTextId(null);
+                                    }}
                                 />
 
                             </div>
@@ -1898,6 +1923,43 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                         />
                                     </div>
                                 </div>
+                            )}
+
+                            {/* Text tool crosshair overlay — captures clicks to place text */}
+                            {textToolActive && (
+                                <div
+                                    className="absolute inset-0 cursor-crosshair"
+                                    style={{ zIndex: 99999 }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!onAddElement) return;
+                                        const rect = (e.currentTarget.parentElement as HTMLDivElement).getBoundingClientRect();
+                                        const x = ((e.clientX - rect.left) / rect.width) * 100;
+                                        const y = ((e.clientY - rect.top) / rect.height) * 100;
+                                        const maxZ = canvasElements.length > 0
+                                            ? Math.max(...canvasElements.map(el => el.zIndex))
+                                            : 1000;
+                                        const newId = `text-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                                        const newEl = {
+                                            id: newId,
+                                            type: "text" as const,
+                                            x, y,
+                                            width: 30,
+                                            height: 5,
+                                            rotation: 0,
+                                            opacity: 1,
+                                            zIndex: maxZ + 1,
+                                            content: "",
+                                            fontSize: 48,
+                                            fontFamily: "Inter, sans-serif",
+                                            fontWeight: "bold" as const,
+                                            color: "#ffffff",
+                                        };
+                                        onAddElement(newEl);
+                                        setEditingTextId(newId);
+                                        if (onTextToolDeactivate) onTextToolDeactivate();
+                                    }}
+                                />
                             )}
                         </div>
                     </div>

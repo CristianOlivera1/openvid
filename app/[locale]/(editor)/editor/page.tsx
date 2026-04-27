@@ -113,6 +113,7 @@ export default function Editor() {
     const [videoMaskConfig, setVideoMaskConfig] = useState<ImageMaskConfig>(DEFAULT_MASK_CONFIG);
 
     const [activeTool, setActiveTool] = useState<Tool>("screenshot");
+    const [elementsTextTabTrigger, setElementsTextTabTrigger] = useState(0);
     const [backgroundTab, setBackgroundTab] = useState<BackgroundTab>("wallpaper");
     const [selectedWallpaper, setSelectedWallpaper] = useState(0);
     const [backgroundBlur, setBackgroundBlur] = useState(0);
@@ -977,6 +978,9 @@ export default function Editor() {
         setRoundedCorners(value); // Para NoneMockup y canvas general
         setMockupConfig(prev => ({ ...prev, cornerRadius: value }));
     }, []);
+
+    // Text tool (Figma-style T key) — activates crosshair + canvas click to place text
+    const [textToolActive, setTextToolActive] = useState(false);
 
     // Canvas elements handlers
     const addCanvasElement = useCallback((element: CanvasElement) => {
@@ -2559,6 +2563,15 @@ export default function Editor() {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
                 return;
             }
+            // Also skip if inside a contenteditable element
+            if ((e.target as HTMLElement)?.isContentEditable) return;
+
+            // T key — Figma-style text tool: activate crosshair cursor to place text on canvas
+            if (e.key === 't' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                e.preventDefault();
+                setTextToolActive(true);
+                return;
+            }
 
             if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedElementId) {
                 e.preventDefault();
@@ -2601,6 +2614,10 @@ export default function Editor() {
 
             if (e.key === "Escape") {
                 e.preventDefault();
+                if (textToolActive) {
+                    setTextToolActive(false);
+                    return;
+                }
                 if (selectedElementId) {
                     setSelectedElementId(null);
                 } else if (selectedVideoClipId) {
@@ -2616,7 +2633,7 @@ export default function Editor() {
 
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [selectedElementId, selectedZoomFragmentId, selectedAudioTrackId, selectedVideoClipId, deleteCanvasElement, handleDeleteZoomFragment, handleDeleteAudioTrack, handleDeleteVideoClip, copySelectedElement, pasteElement, isPhotoMode, copiedElement]);
+    }, [selectedElementId, selectedZoomFragmentId, selectedAudioTrackId, selectedVideoClipId, deleteCanvasElement, handleDeleteZoomFragment, handleDeleteAudioTrack, handleDeleteVideoClip, copySelectedElement, pasteElement, isPhotoMode, copiedElement, textToolActive]);
 
     useEffect(() => {
         const checkMobile = () => {
@@ -2764,6 +2781,7 @@ export default function Editor() {
                                         onAddImageToCanvas={handleAddImageToCanvas}
                                         onDeleteImageProject={handleDeleteImageProject}
                                         onUploadImageToHistory={handleUploadImageToHistory}
+                                        elementsTextTabTrigger={elementsTextTabTrigger}
                                     />
                                 </Suspense>
                             </motion.div>
@@ -2856,6 +2874,9 @@ export default function Editor() {
                         onElementUpdate={updateCanvasElement}
                         onElementSelect={selectCanvasElement}
                         onElementDelete={deleteCanvasElement}
+                        onAddElement={addCanvasElement}
+                        textToolActive={textToolActive}
+                        onTextToolDeactivate={() => setTextToolActive(false)}
                         cameraUrl={effectiveCameraUrl}
                         cameraConfig={cameraConfig}
                         onCameraConfigChange={handleCameraConfigChange}

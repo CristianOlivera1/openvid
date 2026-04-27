@@ -13,12 +13,17 @@ import { SVG_COMPONENTS } from "@/components/canvas-svg";
 import { TooltipAction } from "@/components/ui/tooltip-action";
 import { ProgressiveImg } from "@/components/ui/ProgressiveImg";
 
+interface ExtendedElementsMenuProps extends ElementsMenuProps {
+    textTabTrigger?: number;
+}
+
 export function ElementsMenu({
     onAddElement,
     selectedElement,
     onUpdateElement,
     onDeleteElement,
-}: ElementsMenuProps) {
+    textTabTrigger = 0,
+}: ExtendedElementsMenuProps) {
     const t = useTranslations("elementsMenu");
 
     const [mode, setMode] = useState<"text" | "elements" | "uploads">("elements");
@@ -48,6 +53,15 @@ export function ElementsMenu({
 
     const isSyncing = useRef(false);
     const lastSelectedId = useRef<string | null>(null);
+
+    // Switch to text tab when the parent triggers it (e.g. 'T' key shortcut)
+    useEffect(() => {
+        if (textTabTrigger > 0) {
+            startTransition(() => {
+                setMode("text");
+            });
+        }
+    }, [textTabTrigger]);
 
     useEffect(() => {
         const currentId = selectedElement?.id || null;

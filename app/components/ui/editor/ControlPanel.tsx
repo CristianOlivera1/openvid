@@ -44,6 +44,7 @@ const HistoryMenu = lazy(() => import("./HistoryMenu").then(mod => ({ default: m
 interface ExtendedControlPanelProps extends ControlPanelProps {
     onTogglePanel?: () => void;
     isOpen?: boolean;
+    elementsTextTabTrigger?: number;
 }
 
 export function ControlPanel({
@@ -68,6 +69,7 @@ export function ControlPanel({
     onImageRemove,
     onBackgroundColorChange,
     onTogglePanel,
+    elementsTextTabTrigger = 0,
     isOpen = true,
     // Zoom props
     zoomFragments = [],
@@ -305,6 +307,7 @@ export function ControlPanel({
                             onDeleteElement={onDeleteCanvasElement}
                             onBringToFront={onBringToFront}
                             onSendToBack={onSendToBack}
+                            textTabTrigger={elementsTextTabTrigger}
                         />
                     </Suspense>
                 )}
