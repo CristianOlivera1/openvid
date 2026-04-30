@@ -1215,44 +1215,46 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
         if (!camVideo || !cameraConfig || !cameraConfig.enabled) return;
         if (!camVideo.videoWidth || !camVideo.videoHeight) return;
 
-        if (mainVideo && camVideo.duration > 0 && mainVideo.currentTime > camVideo.duration - 0.1) {
-            return;
-        }
+        if (mainVideo && camVideo.paused) {
+            const targetTime = Math.min(mainVideo.currentTime, Math.max(0, camVideo.duration - 0.1));
 
-        if (mainVideo && camVideo.paused && Math.abs(camVideo.currentTime - mainVideo.currentTime) > 0.05) {
-            try {
-                const targetTime = Math.min(mainVideo.currentTime, camVideo.duration - 0.05);
-                camVideo.currentTime = targetTime;
+            if (Math.abs(camVideo.currentTime - targetTime) > 0.05) {
+                try {
+                    camVideo.currentTime = targetTime;
 
-                await new Promise<void>((resolve) => {
-                    const timeoutId = setTimeout(() => {
-                        camVideo.removeEventListener("seeked", onSeeked);
-                        resolve();
-                    }, 250);
+                    await new Promise<void>((resolve) => {
+         
+                        const timeoutId = setTimeout(() => {
+                            camVideo.removeEventListener("seeked", onSeeked);
+                            resolve();
+                        }, 2000);
 
-                    const onSeeked = () => {
-                        camVideo.removeEventListener("seeked", onSeeked);
+                        const onSeeked = () => {
+                            camVideo.removeEventListener("seeked", onSeeked);
 
-                        const checkReady = setInterval(() => {
-                            if (camVideo.readyState >= 3) {
-                                clearInterval(checkReady);
-                                clearTimeout(timeoutId);
-                                resolve();
-                            }
-                        }, 10);
-                    };
+                            const checkReady = setInterval(() => {
+                                if (camVideo.readyState >= 2) {
+                                    clearInterval(checkReady);
+                                    clearTimeout(timeoutId);
+                                    resolve();
+                                }
+                            }, 10);
+                        };
 
-                    camVideo.addEventListener("seeked", onSeeked);
-                });
-            } catch {
+                        camVideo.addEventListener("seeked", onSeeked);
+                    });
+                } catch (e) {
+                    console.warn("Error en seek de la cámara:", e);
+                }
             }
         }
+
+        // ... A partir de aquí, continúa el resto de tu código exactamente igual:
         const { size, left: drawX, top: drawY } = getCameraLayout(
             cameraConfig,
             canvasWidth,
             canvasHeight
         );
-
         if (size <= 0) return;
 
         const shortSide = Math.min(canvasWidth, canvasHeight);
