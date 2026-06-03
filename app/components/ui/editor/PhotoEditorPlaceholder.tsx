@@ -21,6 +21,10 @@ export function PhotoEditorPlaceholder({
     className = "",
     canvasImageUrl,
     staticImageUrl,
+    isBackgroundRemoving = false,
+    hasBackgroundRemoved = false,
+    onRemoveBackground,
+    onRestoreOriginalImage,
     onSelectPreview,
     selectedPreviewId = "front",
     aspectRatio = "auto",
@@ -108,20 +112,18 @@ export function PhotoEditorPlaceholder({
                     onSelectPreview?.(config);
                     if (isCustom) setIsCustomPopoverOpen(true);
                 }}
-                className={`group relative shrink-0 w-32 sm:w-62 aspect-video squircle-element p-px transition-all duration-300 ease-out outline-none ${
-                    isSelected
+                className={`group relative shrink-0 w-32 sm:w-62 aspect-video squircle-element p-px transition-all duration-300 ease-out outline-none ${isSelected
                         ? `shadow-[0_0_20px_rgba(0,163,255,0.15)]`
                         : isCustom && isCustomUntouched
                             ? "bg-gradient-radial-primary border border-dashed border-white/20 hover:border-white/40"
                             : "bg-white/10 hover:bg-white/20"
-                }`}
+                    }`}
                 aria-label={config.label}
                 aria-pressed={isSelected}
             >
                 <div
-                    className={`relative w-full h-full rounded-[10px] overflow-hidden transition-colors ${
-                        isCustom && isCustomUntouched ? "bg-transparent" : "bg-black/90"
-                    }`}
+                    className={`relative w-full h-full rounded-[10px] overflow-hidden transition-colors ${isCustom && isCustomUntouched ? "bg-transparent" : "bg-black/90"
+                        }`}
                 >
                     {(!isCustom || !isCustomUntouched) && (
                         <div
@@ -200,7 +202,7 @@ export function PhotoEditorPlaceholder({
                         {ButtonCard}
                     </PopoverTrigger>
                     <PopoverContent
-                        align="start" 
+                        align="start"
                         sideOffset={12}
                         className="w-64 bg-[#0A0A0A] border-white/10 shadow-2xl p-4 space-y-4 rounded-xl z-50"
                     >
@@ -342,11 +344,10 @@ export function PhotoEditorPlaceholder({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => onToggle3DBackground(!apply3DToBackground)}
-                                className={`px-2.5 py-2 text-xs font-medium squircle-element transition-all ${
-                                    apply3DToBackground
+                                className={`px-2.5 py-2 text-xs font-medium squircle-element transition-all ${apply3DToBackground
                                         ? "bg-gradient-radial-primary text-cyan-500 border border-cyan-500/50!"
                                         : "bg-white/5 text-white/50 border border-white/10 hover:bg-white/10"
-                                }`}
+                                    }`}
                                 aria-label={t("photoPreview.apply3D")}
                                 aria-pressed={apply3DToBackground}
                             >
@@ -383,6 +384,33 @@ export function PhotoEditorPlaceholder({
                 </div>
 
                 <div className="flex flex-wrap items-center justify-end gap-2">
+                    {onRemoveBackground && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 px-3 py-1.5 text-xs bg-cyan-400/10 border-cyan-300/30 text-cyan-100 hover:bg-cyan-400/20 hover:border-cyan-200/50"
+                            onClick={onRemoveBackground}
+                            disabled={isBackgroundRemoving}
+                            aria-label={t("photoPreview.backgroundRemoval.remove")}
+                        >
+                            <Icon icon={isBackgroundRemoving ? "svg-spinners:ring-resize" : "mdi:image-off-outline"} width={14} aria-hidden="true" />
+                            {isBackgroundRemoving ? t("photoPreview.backgroundRemoval.processing") : t("photoPreview.backgroundRemoval.remove")}
+                        </Button>
+                    )}
+
+                    {hasBackgroundRemoved && onRestoreOriginalImage && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 px-3 py-1.5 text-xs bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+                            onClick={onRestoreOriginalImage}
+                            aria-label={t("photoPreview.backgroundRemoval.restore")}
+                        >
+                            <Icon icon="material-symbols:restore-rounded" width={14} aria-hidden="true" />
+                            {t("photoPreview.backgroundRemoval.restore")}
+                        </Button>
+                    )}
+
                     {onOpenCropper && (
                         <TooltipAction label={t("cropper.tooltip")}>
                             <Button

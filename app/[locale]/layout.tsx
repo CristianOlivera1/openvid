@@ -32,8 +32,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages,
     },
     openGraph: {
-      locale: locale === 'es' ? 'es_ES' : 'en_US',
-      alternateLocale: locale === 'es' ? ['en_US'] : ['es_ES'],
+      locale: locale === 'es' ? 'es_ES' : locale === 'vi' ? 'vi_VN' : locale === 'ru' ? 'ru_RU' : 'en_US',
+      alternateLocale: locale === 'es'
+        ? ['en_US', 'vi_VN', 'ru_RU']
+        : locale === 'en'
+          ? ['es_ES', 'vi_VN', 'ru_RU']
+          : locale === 'vi'
+            ? ['es_ES', 'en_US', 'ru_RU']
+            : ['es_ES', 'en_US', 'vi_VN'],
     },
   };
 }

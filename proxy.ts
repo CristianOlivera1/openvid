@@ -16,7 +16,7 @@ export default async function proxy(request: NextRequest) {
   const intlResponse = intlMiddleware(request);
   intlResponse.headers.set('x-user-country', country);
 
-   const supabaseResponse = await updateSession(request);
+  const supabaseResponse = await updateSession(request);
   supabaseResponse.cookies.getAll().forEach((cookie) => {
     intlResponse.cookies.set(cookie.name, cookie.value);
   });
@@ -26,6 +26,6 @@ export default async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|ffmpeg|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|avif|webm|wasm|js)$).*)'
+    '/((?!api|ffmpeg|assets|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|avif|webm|wasm|js|json)$).*)'
   ],
 };

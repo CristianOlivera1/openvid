@@ -33,7 +33,7 @@ function InlineTextEditor({
         const sel = window.getSelection();
         sel?.removeAllRanges();
         sel?.addRange(range);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fontSize = refSize > 0 ? element.fontSize * (refSize / 1080) : element.fontSize;
@@ -296,6 +296,7 @@ export function CanvasElementsLayer({
                             <div
                                 key={element.id}
                                 data-canvas-element
+                                data-canvas-element-id={element.id}
                                 className={`absolute pointer-events-auto select-none ${element.locked ? "cursor-not-allowed" : "cursor-move"}`}
                                 style={{
                                     left: `${element.x}%`,
@@ -337,6 +338,7 @@ export function CanvasElementsLayer({
                         <div
                             key={element.id}
                             data-canvas-element
+                            data-canvas-element-id={element.id}
                             className={`absolute pointer-events-auto ${element.locked ? "cursor-not-allowed" : "cursor-move"}`}
                             style={{
                                 ...commonStyle,
@@ -379,6 +381,17 @@ export function CanvasElementsLayer({
                 }
 
                 if (element.type === "image") {
+                    const imageElement = element as ImageElement;
+                    const clip = imageElement.clip;
+                    const clipPath = clip
+                        ? `inset(${clip.top || 0}% ${clip.right || 0}% ${clip.bottom || 0}% ${clip.left || 0}%)`
+                        : undefined;
+                    const fill = imageElement.fill;
+                    const hasFill = !!fill && fill.mode !== "none" && (fill.opacity ?? 0) > 0;
+                    const fillBackground = fill?.mode === "gradient"
+                        ? `linear-gradient(${fill.gradientAngle ?? 45}deg, ${fill.gradientFrom || "#00c2ff"}, ${fill.gradientTo || "#7eff5f"})`
+                        : (fill?.color || "#ffffff");
+
                     return (
                         <div
                             key={element.id}
@@ -386,12 +399,30 @@ export function CanvasElementsLayer({
                             style={commonStyle}
                         >
                             <img
-                                src={(element as ImageElement).imagePath}
+                                src={imageElement.imagePath}
                                 alt="Image element"
                                 crossOrigin="anonymous"
                                 className="w-full h-full object-contain rounded"
-                                style={{ pointerEvents: 'none', opacity: element.opacity }}
+                                style={{ pointerEvents: 'none', opacity: element.opacity, clipPath }}
                             />
+                            {hasFill && (
+                                <div
+                                    className="absolute inset-0 rounded pointer-events-none"
+                                    style={{
+                                        clipPath,
+                                        opacity: fill.opacity ?? 0.35,
+                                        background: fillBackground,
+                                        WebkitMaskImage: `url(${imageElement.imagePath})`,
+                                        WebkitMaskSize: "contain",
+                                        WebkitMaskPosition: "center",
+                                        WebkitMaskRepeat: "no-repeat",
+                                        maskImage: `url(${imageElement.imagePath})`,
+                                        maskSize: "contain",
+                                        maskPosition: "center",
+                                        maskRepeat: "no-repeat",
+                                    }}
+                                />
+                            )}
                         </div>
                     );
                 }

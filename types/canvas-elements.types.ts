@@ -21,11 +21,29 @@ export interface SvgElement extends CanvasElementBase {
     svgId: string;
     color?: string;
 }
+
+export interface ElementClip {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+}
+
+export interface ElementFill {
+    mode: "none" | "solid" | "gradient";
+    color?: string;
+    gradientFrom?: string;
+    gradientTo?: string;
+    gradientAngle?: number;
+    opacity?: number;
+}
     
 export interface ImageElement extends CanvasElementBase {
     type: "image";
     category: string;
     imagePath: string;
+    clip?: ElementClip;
+    fill?: ElementFill;
 }
 
 export interface TextElement extends CanvasElementBase {

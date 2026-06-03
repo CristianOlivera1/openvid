@@ -67,6 +67,8 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
     onElementUpdate,
     onElementSelect,
     onElementDelete,
+    onRemoveBackgroundSelectedElement,
+    onEditSelectedElement,
     cameraUrl = null,
     cameraConfig = null,
     onCameraConfigChange,
@@ -312,7 +314,7 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
 
     // Multi-select and canvas right-click context menu
     const [canvasSelectedIds, setCanvasSelectedIds] = useState<string[]>([]);
-    const [canvasCtxMenu, setCanvasCtxMenu] = useState<{ x: number; y: number } | null>(null);
+    const [canvasCtxMenu, setCanvasCtxMenu] = useState<{ x: number; y: number; targetId?: string } | null>(null);
 
     useEffect(() => {
         if (!canvasCtxMenu) return;
@@ -799,6 +801,9 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                 const img = elementImagesRef.current.get(element.imagePath);
                 if (!img) continue;
 
+                const imageElement = element as ImageElement;
+                const clip = imageElement.clip;
+
                 ctx.save();
 
                 const elemX = (element.x / 100) * canvasWidth;
@@ -824,13 +829,68 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                 ctx.rotate((element.rotation * Math.PI) / 180);
                 ctx.globalAlpha = element.opacity;
 
+                let leftRatio = Math.max(0, Math.min(0.9, (clip?.left || 0) / 100));
+                let rightRatio = Math.max(0, Math.min(0.9, (clip?.right || 0) / 100));
+                let topRatio = Math.max(0, Math.min(0.9, (clip?.top || 0) / 100));
+                let bottomRatio = Math.max(0, Math.min(0.9, (clip?.bottom || 0) / 100));
+
+                if (leftRatio + rightRatio > 0.95) {
+                    const scale = 0.95 / (leftRatio + rightRatio);
+                    leftRatio *= scale;
+                    rightRatio *= scale;
+                }
+
+                if (topRatio + bottomRatio > 0.95) {
+                    const scale = 0.95 / (topRatio + bottomRatio);
+                    topRatio *= scale;
+                    bottomRatio *= scale;
+                }
+
+                const srcX = img.naturalWidth * leftRatio;
+                const srcY = img.naturalHeight * topRatio;
+                const srcW = Math.max(1, img.naturalWidth * (1 - leftRatio - rightRatio));
+                const srcH = Math.max(1, img.naturalHeight * (1 - topRatio - bottomRatio));
+
                 ctx.drawImage(
                     img,
+                    srcX,
+                    srcY,
+                    srcW,
+                    srcH,
                     -finalWidth / 2,
                     -finalHeight / 2,
                     finalWidth,
                     finalHeight
                 );
+
+                const fill = imageElement.fill;
+                if (fill && fill.mode !== "none") {
+                    const fillOpacity = Math.max(0, Math.min(1, fill.opacity ?? 0.35));
+                    if (fillOpacity > 0) {
+                        const prevAlpha = ctx.globalAlpha;
+                        const prevComposite = ctx.globalCompositeOperation;
+                        ctx.globalAlpha = prevAlpha * fillOpacity;
+                        ctx.globalCompositeOperation = "source-atop";
+
+                        if (fill.mode === "gradient") {
+                            const angleRad = ((fill.gradientAngle ?? 45) * Math.PI) / 180;
+                            const x1 = Math.cos(angleRad) * (finalWidth / 2);
+                            const y1 = Math.sin(angleRad) * (finalHeight / 2);
+                            const x0 = -x1;
+                            const y0 = -y1;
+                            const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+                            grad.addColorStop(0, fill.gradientFrom || "#00c2ff");
+                            grad.addColorStop(1, fill.gradientTo || "#7eff5f");
+                            ctx.fillStyle = grad;
+                        } else {
+                            ctx.fillStyle = fill.color || "#ffffff";
+                        }
+
+                        ctx.fillRect(-finalWidth / 2, -finalHeight / 2, finalWidth, finalHeight);
+                        ctx.globalCompositeOperation = prevComposite;
+                        ctx.globalAlpha = prevAlpha;
+                    }
+                }
 
                 ctx.restore();
             } else if (element.type === "text") {
@@ -1256,7 +1316,7 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                     camVideo.currentTime = targetTime;
 
                     await new Promise<void>((resolve) => {
-         
+
                         const timeoutId = setTimeout(() => {
                             camVideo.removeEventListener("seeked", onSeeked);
                             resolve();
@@ -1376,9 +1436,21 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
             onContextMenu={(e) => {
                 if (canvasElements.length === 0) return;
                 const target = e.target as HTMLElement;
-                if (!target.closest('[data-canvas-element]')) return;
+                const elementNode = target.closest('[data-canvas-element]') as HTMLElement | null;
+                if (!elementNode) return;
+
+                const elementId = elementNode.getAttribute('data-canvas-element-id');
+                if (elementId) {
+                    if (!canvasSelectedIds.includes(elementId)) {
+                        setCanvasSelectedIds([elementId]);
+                    }
+                    if (onElementSelect) {
+                        onElementSelect(elementId);
+                    }
+                }
+
                 e.preventDefault();
-                setCanvasCtxMenu({ x: e.clientX, y: e.clientY });
+                setCanvasCtxMenu({ x: e.clientX, y: e.clientY, targetId: elementId ?? undefined });
             }}
         >
             {mediaType === "image" && isDraggingOver && (
@@ -1386,9 +1458,14 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
             )}
 
             {canvasCtxMenu && (() => {
-                const ids = canvasSelectedIds.length > 0 ? canvasSelectedIds : (selectedElementId ? [selectedElementId] : []);
+                const ids = canvasCtxMenu.targetId
+                    ? [canvasCtxMenu.targetId]
+                    : (canvasSelectedIds.length > 0 ? canvasSelectedIds : (selectedElementId ? [selectedElementId] : []));
                 const isMulti = ids.length > 1;
                 const singleId = ids[0] ?? null;
+                const selectedImageElement = singleId
+                    ? canvasElements.find((el): el is ImageElement => el.id === singleId && el.type === "image")
+                    : null;
                 return (
                     <div
                         data-canvas-ctx-menu
@@ -1407,7 +1484,7 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                     }}
                                 >
                                     <Icon icon="qlementine-icons:bring-to-front-16" className="size-3.5 shrink-0 opacity-70" />
-                                    Traer al frente
+                                    Đưa lên trước
                                 </button>
                                 <button
                                     className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11.5px] text-neutral-300 hover:bg-white/6 transition-colors text-left"
@@ -1424,8 +1501,32 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                     }}
                                 >
                                     <Icon icon="qlementine-icons:bring-to-back-16" className="size-3.5 shrink-0 opacity-70" />
-                                    Enviar atrás
+                                    Đưa xuống sau
                                 </button>
+                                {selectedImageElement && (
+                                    <>
+                                        <button
+                                            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11.5px] text-neutral-300 hover:bg-white/6 transition-colors text-left"
+                                            onClick={() => {
+                                                if (onEditSelectedElement) onEditSelectedElement();
+                                                setCanvasCtxMenu(null);
+                                            }}
+                                        >
+                                            <Icon icon="mdi:tune-variant" className="size-3.5 shrink-0 opacity-70" />
+                                            Chỉnh sửa phần tử
+                                        </button>
+                                        <button
+                                            className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11.5px] text-cyan-300 hover:bg-cyan-500/10 transition-colors text-left"
+                                            onClick={() => {
+                                                if (onRemoveBackgroundSelectedElement) onRemoveBackgroundSelectedElement();
+                                                setCanvasCtxMenu(null);
+                                            }}
+                                        >
+                                            <Icon icon="mdi:image-off-outline" className="size-3.5 shrink-0 opacity-70" />
+                                            Tách nền ảnh
+                                        </button>
+                                    </>
+                                )}
                                 <div className="my-1 h-px bg-white/6" />
                             </>
                         )}
@@ -1440,7 +1541,7 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                     }}
                                 >
                                     <Icon icon="solar:layers-minimalistic-bold" className="size-3.5 shrink-0 opacity-70" />
-                                    Agrupar ({ids.length})
+                                    Nhóm ({ids.length})
                                 </button>
                                 <button
                                     className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[11.5px] text-neutral-300 hover:bg-white/6 transition-colors text-left"
@@ -1455,7 +1556,7 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                                     }}
                                 >
                                     <Icon icon="solar:layers-bold" className="size-3.5 shrink-0 opacity-70" />
-                                    Desagrupar
+                                    Bỏ nhóm
                                 </button>
                                 <div className="my-1 h-px bg-white/6" />
                             </>
@@ -1469,7 +1570,7 @@ export const VideoCanvas = forwardRef<VideoCanvasHandle, VideoCanvasProps>(funct
                             }}
                         >
                             <Icon icon="solar:trash-bin-trash-bold" className="size-3.5 shrink-0 opacity-70" />
-                            {isMulti ? `Eliminar ${ids.length} elementos` : "Eliminar"}
+                            {isMulti ? `Xóa ${ids.length} phần tử` : "Xóa"}
                         </button>
                     </div>
                 );

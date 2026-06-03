@@ -62,7 +62,7 @@ export function StructuredData({ data }: StructuredDataProps) {
   );
 }
 
-export function generateWebAppSchema(locale: 'es' | 'en'): WebApplicationSchema {
+export function generateWebAppSchema(locale: 'es' | 'en' | 'ru' | 'vi'): WebApplicationSchema {
   const baseUrl = 'https://openvid.dev';
 
   const content = {
@@ -100,6 +100,18 @@ export function generateWebAppSchema(locale: 'es' | 'en'): WebApplicationSchema 
         'Без водяных знаков',
         'Экспорт в высоком качестве',
         'Бесплатный онлайн-редактор',
+      ],
+    },
+    vi: {
+      name: 'openvid - Trình chỉnh sửa video trực tuyến',
+      description: 'Trình chỉnh sửa video trực tuyến miễn phí có hỗ trợ AI. Ghi màn hình, zoom điện ảnh, mockup chuyên nghiệp và xuất HD không watermark.',
+      features: [
+        'Ghi màn hình HD',
+        'Zoom điện ảnh có hỗ trợ AI',
+        'Mockup chuyên nghiệp',
+        'Không có watermark',
+        'Xuất video chất lượng cao',
+        'Trình chỉnh sửa trực tuyến miễn phí',
       ],
     },
   };

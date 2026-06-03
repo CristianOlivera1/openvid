@@ -4,11 +4,17 @@ import { cookies } from "next/headers";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error("Missing Supabase environment variables");
-}
+const missingSupabaseClient = {
+  auth: {
+    exchangeCodeForSession: async () => ({ error: null }),
+  },
+};
 
 export const createClient = async () => {
+  if (!supabaseUrl || !supabaseKey) {
+    return missingSupabaseClient as Awaited<ReturnType<typeof createServerClient>>;
+  }
+
   const cookieStore = await cookies();
 
   return createServerClient(supabaseUrl, supabaseKey, {
@@ -22,7 +28,7 @@ export const createClient = async () => {
             cookieStore.set(name, value, options)
           );
         } catch {
-  
+
         }
       },
     },

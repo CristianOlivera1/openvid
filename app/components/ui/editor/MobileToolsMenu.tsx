@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import * as Dialog from "@radix-ui/react-dialog";
+import { useTranslations } from "next-intl";
 import type { Tool } from "@/types";
 
 interface MobileToolsMenuProps {
@@ -21,6 +22,7 @@ export function MobileToolsMenu({
     onOpenToolPanel
 }: MobileToolsMenuProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const t = useTranslations("toolsSidebar");
 
     const handleToolChange = (tool: Tool) => {
         onToolChange(tool);
@@ -44,7 +46,7 @@ export function MobileToolsMenu({
             <Dialog.Trigger asChild>
                 <button
                     className="fixed bottom-4 left-4 z-50 size-10 rounded-full shadow-lg shadow-blue-500/50 bg-gradient-primary flex items-center justify-center hover:scale-105 transition-transform active:scale-95 lg:hidden"
-                    aria-label="Abrir menú de herramientas"
+                    aria-label={t("tools.toolbar")}
                 >
                     <Icon icon="solar:widget-2-bold-duotone" width="20" className="text-white" aria-hidden="true" />
                 </button>
@@ -55,12 +57,12 @@ export function MobileToolsMenu({
                 <Dialog.Content className="fixed bottom-0 left-0 right-0 bg-[#1a1a1d] border-t border-white/10 rounded-t-2xl z-101 p-6 animate-in slide-in-from-bottom duration-300 max-h-[80vh] overflow-y-auto">
                     <div className="flex items-center justify-between mb-6">
                         <Dialog.Title className="text-lg font-semibold text-white" id="tools-dialog-title">
-                            Herramientas
+                            {t("tools.toolbar")}
                         </Dialog.Title>
                         <Dialog.Close asChild>
                             <button
                                 className="h-8 w-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
-                                aria-label="Cerrar"
+                                aria-label={t("tools.close")}
                             >
                                 <Icon icon="mdi:close" width="20" className="text-white/70" />
                             </button>
@@ -71,7 +73,7 @@ export function MobileToolsMenu({
                         <button
                             onClick={() => handleToolChange("screenshot")}
                             className="flex items-center justify-center p-4 squircle-element transition-all duration-200 group relative flex-col gap-1"
-                            aria-label="Fondo"
+                            aria-label={t("tools.background")}
                             aria-pressed={activeTool === "screenshot"}
                             style={activeTool === "screenshot" ? {
                                 background: 'radial-gradient(circle at 50% 0%, #555555 0%, #454545 64%)',
@@ -91,7 +93,7 @@ export function MobileToolsMenu({
                             </div>
 
                             <span className={`text-sm font-medium transition-colors ${activeTool === "screenshot" ? "text-white" : "text-white/40"}`}>
-                                Fondo
+                                {t("tools.background")}
                             </span>
 
                             {activeTool === "screenshot" && (
@@ -102,7 +104,7 @@ export function MobileToolsMenu({
                         <button
                             onClick={() => handleToolChange("elements")}
                             className="flex items-center justify-center p-4 squircle-element transition-all duration-200 group relative flex-col gap-1 active:scale-95"
-                            aria-label="Elementos"
+                            aria-label={t("tools.elements")}
                             aria-pressed={activeTool === "elements"}
                             style={activeTool === "elements" ? {
                                 background: 'radial-gradient(circle at 50% 0%, #555555 0%, #454545 64%)',
@@ -119,7 +121,7 @@ export function MobileToolsMenu({
                                 </svg>
                             </div>
                             <span className={`text-sm font-medium transition-colors ${activeTool === "elements" ? "text-white" : "text-white/40"}`}>
-                                Elementos
+                                {t("tools.elements")}
                             </span>
                             {activeTool === "elements" && (
                                 <div className="absolute left-2 w-20 h-5 top-1/4 -translate-y-1/2 size-3 bg-white rounded-full blur-[14px] rotate-45 opacity-50 pointer-events-none" />
@@ -143,7 +145,7 @@ export function MobileToolsMenu({
                                 <Icon icon="mdi:volume-high" width="24" className={activeTool === "audio" ? "text-white" : "text-white/70"} aria-hidden="true" />
                             </div>
                             <span className={`text-sm font-medium transition-colors ${activeTool === "audio" ? "text-white" : "text-white/40"}`}>
-                                Audio
+                                {t("tools.audio")}
                             </span>
                             {activeTool === "audio" && (
                                 <div className="absolute left-2 w-20 h-5 top-1/4 -translate-y-1/2 size-3 bg-white rounded-full blur-[14px] rotate-45 opacity-50 pointer-events-none" />
@@ -165,7 +167,7 @@ export function MobileToolsMenu({
                                 <Icon icon="iconamoon:zoom-in-bold" width="24" className={activeTool === "zoom" ? "text-white" : "text-white/70"} />
                             </div>
                             <span className={`text-sm font-medium transition-colors ${activeTool === "zoom" ? "text-white" : "text-white/40"}`}>
-                                Zoom
+                                {t("tools.zoom")}
                             </span>
                             {activeTool === "zoom" && (
                                 <div className="absolute left-2 w-20 h-5 top-1/4 -translate-y-1/2 size-3 bg-white rounded-full blur-[14px] rotate-45 opacity-50 pointer-events-none" />
@@ -187,7 +189,7 @@ export function MobileToolsMenu({
                                 <Icon icon="hugeicons:ai-browser" width="24" className={activeTool === "mockup" ? "text-white" : "text-white/70"} />
                             </div>
                             <span className={`text-sm font-medium transition-colors ${activeTool === "mockup" ? "text-white" : "text-white/40"}`}>
-                                Mockup
+                                {t("tools.mockup")}
                             </span>
                             {activeTool === "mockup" && (
                                 <div className="absolute left-2 w-20 h-5 top-1/4 -translate-y-1/2 size-3 bg-white rounded-full blur-[14px] rotate-45 opacity-50 pointer-events-none" />
@@ -212,7 +214,7 @@ export function MobileToolsMenu({
                             </div>
 
                             <span className="text-sm font-medium text-white/70 group-hover:text-white transition-colors">
-                                {isUploading ? "Subiendo..." : "Subir video"}
+                                {isUploading ? t("upload.buttonUploading") : t("upload.button")}
                             </span>
 
                             {!isUploading && (

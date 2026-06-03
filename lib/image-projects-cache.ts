@@ -33,7 +33,7 @@ async function generateThumbnail(blob: Blob, maxSize = 200): Promise<string> {
     return new Promise((resolve, reject) => {
         const img = new Image();
         const url = URL.createObjectURL(blob);
-        
+
         img.onload = () => {
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
@@ -45,7 +45,7 @@ async function generateThumbnail(blob: Blob, maxSize = 200): Promise<string> {
 
             let width = img.width;
             let height = img.height;
-            
+
             if (width > height) {
                 if (width > maxSize) {
                     height = (height * maxSize) / width;
@@ -61,7 +61,7 @@ async function generateThumbnail(blob: Blob, maxSize = 200): Promise<string> {
             canvas.width = width;
             canvas.height = height;
             ctx.drawImage(img, 0, 0, width, height);
-            
+
             URL.revokeObjectURL(url);
             resolve(canvas.toDataURL("image/jpeg", 0.7));
         };
@@ -91,11 +91,12 @@ export async function saveImageProject(project: Omit<ImageProject, "id" | "image
             generateThumbnail(project.imageBlob),
             blobToDataURL(project.imageBlob)
         ]);
-        
+
         const fullProject: ImageProject = {
             ...project,
             id: crypto.randomUUID(),
             imageDataUrl,
+            sourceImageDataUrl: project.sourceImageDataUrl ?? imageDataUrl,
             thumbnailDataUrl: thumbnail,
             createdAt: Date.now()
         };
@@ -104,7 +105,7 @@ export async function saveImageProject(project: Omit<ImageProject, "id" | "image
             const transaction = db.transaction([STORE_NAME], "readwrite");
             const store = transaction.objectStore(STORE_NAME);
             const request = store.put(fullProject);
-            
+
             request.onsuccess = () => resolve(fullProject);
             request.onerror = () => reject(request.error);
         });
@@ -118,14 +119,14 @@ export async function updateImageProject(id: string, updates: Partial<Omit<Image
     try {
         const db = await openDB();
         const existing = await getImageProject(id);
-        
+
         if (!existing) {
             throw new Error(`Project with id ${id} not found`);
         }
 
         let thumbnail = existing.thumbnailDataUrl;
         let imageDataUrl = existing.imageDataUrl;
-        
+
         if (updates.imageBlob) {
             [thumbnail, imageDataUrl] = await Promise.all([
                 generateThumbnail(updates.imageBlob),
@@ -136,6 +137,7 @@ export async function updateImageProject(id: string, updates: Partial<Omit<Image
         const updated: ImageProject = {
             ...existing,
             ...updates,
+            sourceImageDataUrl: updates.sourceImageDataUrl ?? existing.sourceImageDataUrl,
             imageDataUrl,
             thumbnailDataUrl: thumbnail
         };
@@ -144,7 +146,7 @@ export async function updateImageProject(id: string, updates: Partial<Omit<Image
             const transaction = db.transaction([STORE_NAME], "readwrite");
             const store = transaction.objectStore(STORE_NAME);
             const request = store.put(updated);
-            
+
             request.onsuccess = () => resolve(updated);
             request.onerror = () => reject(request.error);
         });
@@ -157,12 +159,12 @@ export async function updateImageProject(id: string, updates: Partial<Omit<Image
 export async function getImageProject(id: string): Promise<ImageProject | null> {
     try {
         const db = await openDB();
-        
+
         return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], "readonly");
             const store = transaction.objectStore(STORE_NAME);
             const request = store.get(id);
-            
+
             request.onsuccess = () => resolve(request.result || null);
             request.onerror = () => reject(request.error);
         });
@@ -175,15 +177,15 @@ export async function getImageProject(id: string): Promise<ImageProject | null> 
 export async function getAllImageProjects(): Promise<ImageProjectPreview[]> {
     try {
         const db = await openDB();
-        
+
         return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], "readonly");
             const store = transaction.objectStore(STORE_NAME);
             const index = store.index("createdAt");
             const request = index.openCursor(null, "prev");
-            
+
             const projects: ImageProjectPreview[] = [];
-            
+
             request.onsuccess = (event) => {
                 const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
                 if (cursor) {
@@ -199,7 +201,7 @@ export async function getAllImageProjects(): Promise<ImageProjectPreview[]> {
                     resolve(projects);
                 }
             };
-            
+
             request.onerror = () => reject(request.error);
         });
     } catch (error) {
@@ -211,12 +213,12 @@ export async function getAllImageProjects(): Promise<ImageProjectPreview[]> {
 export async function deleteImageProject(id: string): Promise<void> {
     try {
         const db = await openDB();
-        
+
         return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], "readwrite");
             const store = transaction.objectStore(STORE_NAME);
             const request = store.delete(id);
-            
+
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
         });
@@ -246,12 +248,12 @@ export function createProjectImageUrl(blob: Blob): string {
 export async function getProjectCount(): Promise<number> {
     try {
         const db = await openDB();
-        
+
         return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], "readonly");
             const store = transaction.objectStore(STORE_NAME);
             const request = store.count();
-            
+
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
         });

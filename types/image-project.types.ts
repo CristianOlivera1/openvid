@@ -7,6 +7,7 @@ export interface ImageProject {
     id: string;
     imageBlob: Blob;
     imageDataUrl: string;
+    sourceImageDataUrl?: string;
     imageName: string;
     imageWidth: number;
     imageHeight: number;

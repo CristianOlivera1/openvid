@@ -23,7 +23,7 @@ import type { MockupConfig } from "@/types/mockup.types";
 import type { EditorState } from "@/types/editor-state.types";
 import { createInitialEditorState } from "@/types/editor-state.types";
 import { DEFAULT_MOCKUP_CONFIG, getMockupDefaultConfig } from "@/types/mockup.types";
-import type { CanvasElement } from "@/types/canvas-elements.types";
+import type { CanvasElement, ImageElement } from "@/types/canvas-elements.types";
 import type { CameraConfig } from "@/types/camera.types";
 import type { Preview3DConfig, ImageMaskConfig } from "@/types/photo.types";
 import { DEFAULT_MASK_CONFIG, PREVIEW_CONFIGS } from "@/types/photo.types";
@@ -39,6 +39,7 @@ import { findValidFragmentPosition } from "@/app/components/ui/editor/ZoomFragme
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { TimelineSkeleton } from "@/app/components/ui/Skeleton";
 import { AudioTrimModal } from "@/app/components/ui/editor/AudioTrimModal";
+import { ElementEditModal } from "@/app/components/ui/editor/ElementEditModal";
 import { VIDEO_Z_INDEX } from "@/lib/constants";
 import Image from "next/image";
 import Link from "next/link";
@@ -50,6 +51,24 @@ const ExportOverlay = lazy(() => import("@/app/components/ui/ExportOverlay").the
 const VideoCropperModal = lazy(() => import("@/app/components/ui/editor/VideoCropperModal").then(mod => ({ default: mod.VideoCropperModal })));
 const ImageCropperModal = lazy(() => import("@/app/components/ui/editor/ImageCropperModal").then(mod => ({ default: mod.ImageCropperModal })));
 const PhotoEditorPlaceholder = lazy(() => import("@/app/components/ui/editor/PhotoEditorPlaceholder").then(mod => ({ default: mod.PhotoEditorPlaceholder })));
+
+const BACKGROUND_REMOVAL_PUBLIC_PATH = "/assets/background-removal/";
+const BACKGROUND_REMOVAL_BASE_CONFIG = {
+    publicPath: BACKGROUND_REMOVAL_PUBLIC_PATH,
+    model: "isnet_fp16" as const,
+    device: "cpu" as const,
+};
+
+const buildBackgroundRemovalConfig = () => {
+    if (typeof window === "undefined") {
+        return BACKGROUND_REMOVAL_BASE_CONFIG;
+    }
+
+    return {
+        ...BACKGROUND_REMOVAL_BASE_CONFIG,
+        publicPath: new URL(BACKGROUND_REMOVAL_PUBLIC_PATH, window.location.origin).toString(),
+    };
+};
 
 export default function Editor() {
     // Editor mode (video/photo) from URL params
@@ -97,6 +116,9 @@ export default function Editor() {
     // Photo mode 3D preview state
     const [selectedPreviewId, setSelectedPreviewId] = useState<string>("front");
     const [canvasImageUrl, setCanvasImageUrl] = useState<string | null>(null);
+    const [isBackgroundRemoving, setIsBackgroundRemoving] = useState(false);
+    const [hasBackgroundRemoved, setHasBackgroundRemoved] = useState(false);
+    const hasPreloadedBackgroundRemovalRef = useRef(false);
     const [imageTransform, setImageTransform] = useState<Preview3DConfig>({
         id: "front",
         label: "Front",
@@ -210,6 +232,8 @@ export default function Editor() {
     // Canvas elements state
     const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([]);
     const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+    const [isElementEditModalOpen, setIsElementEditModalOpen] = useState(false);
+    const [elementOriginalImagePathById, setElementOriginalImagePathById] = useState<Record<string, string>>({});
 
     // Audio state
     const [uploadedAudios, setUploadedAudios] = useState<import("@/types/audio.types").UploadedAudio[]>([]);
@@ -371,6 +395,9 @@ export default function Editor() {
         setImageTransform(currentProject.imagePreview3D);
         setApply3DToBackground(currentProject.apply3DToBackground);
         setImageMaskConfig(currentProject.imageMaskConfig);
+        setHasBackgroundRemoved(
+            !!currentProject.sourceImageDataUrl && currentProject.sourceImageDataUrl !== currentProject.imageDataUrl
+        );
         setImageDimensions({
             width: currentProject.imageWidth,
             height: currentProject.imageHeight,
@@ -380,6 +407,24 @@ export default function Editor() {
             isRestoringProjectRef.current = false;
         }, 500); // 
     }, [currentProject, isPhotoMode]);
+
+    useEffect(() => {
+        if (!isPhotoMode) return;
+
+        const selectedImageElement = selectedElementId
+            ? canvasElements.find((el): el is ImageElement => el.id === selectedElementId && el.type === "image")
+            : undefined;
+
+        if (selectedImageElement) {
+            const sourcePath = elementOriginalImagePathById[selectedImageElement.id];
+            setHasBackgroundRemoved(!!sourcePath && sourcePath !== selectedImageElement.imagePath);
+            return;
+        }
+
+        setHasBackgroundRemoved(
+            !!currentProject?.sourceImageDataUrl && currentProject.sourceImageDataUrl !== currentProject.imageDataUrl
+        );
+    }, [isPhotoMode, selectedElementId, canvasElements, elementOriginalImagePathById, currentProject]);
 
     // Image project handlers
     const handleSelectImageProject = useCallback(async (projectId: string) => {
@@ -416,6 +461,7 @@ export default function Editor() {
         if (isDeletingCurrent) {
             setImageUrl(null);
             setCanvasImageUrl(null);
+            setHasBackgroundRemoved(false);
             setImageDimensions(null);
             // Reset to default state
             setBackgroundTab("wallpaper");
@@ -473,6 +519,7 @@ export default function Editor() {
 
             if (project) {
                 setImageUrl(project.imageDataUrl);
+                setHasBackgroundRemoved(false);
                 setImageDimensions({ width: img.width, height: img.height });
             }
         } catch (error) {
@@ -517,6 +564,7 @@ export default function Editor() {
 
                 if (project) {
                     setImageUrl(project.imageDataUrl);
+                    setHasBackgroundRemoved(false);
                     setImageDimensions({ width: img.width, height: img.height });
                 }
             } catch (error) {
@@ -562,6 +610,7 @@ export default function Editor() {
 
             if (project) {
                 setImageUrl(project.imageDataUrl);
+                setHasBackgroundRemoved(false);
                 setImageDimensions({ width: img.width, height: img.height });
             }
         } catch (error) {
@@ -600,6 +649,165 @@ export default function Editor() {
             await handleImageUploadToCanvas(imageFile);
         }
     }, [isPhotoMode, handleImageUploadToCanvas]);
+
+    const imagePathToBlob = useCallback(async (imagePath: string) => {
+        const response = await fetch(imagePath);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image source: ${response.status}`);
+        }
+        return response.blob();
+    }, []);
+
+    const blobToDataUrl = useCallback(async (blob: Blob) => {
+        return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error("Failed to convert blob to data URL"));
+            reader.readAsDataURL(blob);
+        });
+    }, []);
+
+    const ensureBackgroundRemovalReady = useCallback(async () => {
+        if (hasPreloadedBackgroundRemovalRef.current) return;
+        const { preload } = await import("@imgly/background-removal");
+        await preload(buildBackgroundRemovalConfig());
+        hasPreloadedBackgroundRemovalRef.current = true;
+    }, []);
+
+    const handleRemoveBackground = useCallback(async () => {
+        if (!isPhotoMode || isBackgroundRemoving) return;
+
+        setIsBackgroundRemoving(true);
+        try {
+            await ensureBackgroundRemovalReady();
+            const { removeBackground } = await import("@imgly/background-removal");
+            const removeBackgroundImage = removeBackground as unknown as (
+                source: Blob,
+                config?: {
+                    publicPath?: string;
+                    model?: "isnet" | "isnet_fp16" | "isnet_quint8";
+                    device?: "cpu" | "gpu";
+                    output?: {
+                        format?: "image/png" | "image/jpeg" | "image/webp";
+                        type?: "foreground" | "background" | "mask";
+                        quality?: number;
+                    };
+                }
+            ) => Promise<Blob>;
+
+            const selectedImageElement = selectedElementId
+                ? canvasElements.find((el): el is ImageElement => el.id === selectedElementId && el.type === "image")
+                : undefined;
+
+            if (selectedImageElement) {
+                const sourceBlob = await imagePathToBlob(selectedImageElement.imagePath);
+                const cutoutBlob = await removeBackgroundImage(sourceBlob, {
+                    ...buildBackgroundRemovalConfig(),
+                    output: {
+                        format: "image/png",
+                        type: "foreground",
+                        quality: 1,
+                    },
+                });
+                const cutoutDataUrl = await blobToDataUrl(cutoutBlob);
+
+                setElementOriginalImagePathById(prev => {
+                    if (prev[selectedImageElement.id]) return prev;
+                    return { ...prev, [selectedImageElement.id]: selectedImageElement.imagePath };
+                });
+
+                setCanvasElements(prev => prev.map(el =>
+                    el.id === selectedImageElement.id && el.type === "image"
+                        ? { ...el, imagePath: cutoutDataUrl }
+                        : el
+                ));
+                setHasBackgroundRemoved(true);
+                return;
+            }
+
+            if (!currentProject) return;
+
+            const cutoutBlob = await removeBackgroundImage(currentProject.imageBlob, {
+                ...buildBackgroundRemovalConfig(),
+                output: {
+                    format: "image/png",
+                    type: "foreground",
+                    quality: 1,
+                },
+            });
+
+            const updated = await saveCurrentProject({
+                imageBlob: cutoutBlob,
+            });
+
+            if (updated) {
+                setImageUrl(updated.imageDataUrl);
+                setHasBackgroundRemoved(true);
+            }
+        } catch (error) {
+            console.error("Failed to remove image background:", error);
+        } finally {
+            setIsBackgroundRemoving(false);
+        }
+    }, [
+        isPhotoMode,
+        isBackgroundRemoving,
+        selectedElementId,
+        canvasElements,
+        imagePathToBlob,
+        blobToDataUrl,
+        ensureBackgroundRemovalReady,
+        currentProject,
+        saveCurrentProject,
+    ]);
+
+    const handleRestoreOriginalImage = useCallback(async () => {
+        if (!isPhotoMode || isBackgroundRemoving) return;
+
+        const selectedImageElement = selectedElementId
+            ? canvasElements.find((el): el is ImageElement => el.id === selectedElementId && el.type === "image")
+            : undefined;
+
+        if (selectedImageElement) {
+            const sourcePath = elementOriginalImagePathById[selectedImageElement.id];
+            if (!sourcePath) return;
+            setCanvasElements(prev => prev.map(el =>
+                el.id === selectedImageElement.id && el.type === "image"
+                    ? { ...el, imagePath: sourcePath }
+                    : el
+            ));
+            setHasBackgroundRemoved(false);
+            return;
+        }
+
+        if (!currentProject?.sourceImageDataUrl) return;
+
+        setIsBackgroundRemoving(true);
+        try {
+            const response = await fetch(currentProject.sourceImageDataUrl);
+            const originalBlob = await response.blob();
+            const updated = await saveCurrentProject({
+                imageBlob: originalBlob,
+            });
+
+            if (updated) {
+                setImageUrl(updated.imageDataUrl);
+                setHasBackgroundRemoved(false);
+            }
+        } catch (error) {
+            console.error("Failed to restore original image:", error);
+        } finally {
+            setIsBackgroundRemoving(false);
+        }
+    }, [
+        isPhotoMode,
+        isBackgroundRemoving,
+        selectedElementId,
+        canvasElements,
+        elementOriginalImagePathById,
+        currentProject,
+        saveCurrentProject,
+    ]);
     const selectCanvasElement = useCallback((id: string | null) => {
         setSelectedElementId(id);
         if (id) {
@@ -999,9 +1207,21 @@ export default function Editor() {
         const idsSet = new Set(idsToDelete);
         setCanvasElements(prev => prev.filter(el => !idsSet.has(el.id)));
         setSelectedElementId(prev => prev && idsSet.has(prev) ? null : prev);
+        setElementOriginalImagePathById(prev => {
+            const next = { ...prev };
+            idsToDelete.forEach(id => {
+                delete next[id];
+            });
+            return next;
+        });
     }, []);
 
     const [copiedElement, setCopiedElement] = useState<CanvasElement | null>(null);
+
+    const selectedCanvasElement = useMemo(() => {
+        if (!selectedElementId) return null;
+        return canvasElements.find(el => el.id === selectedElementId) || null;
+    }, [canvasElements, selectedElementId]);
 
     const copySelectedElement = useCallback(() => {
         if (!selectedElementId) return;
@@ -2868,6 +3088,11 @@ export default function Editor() {
                         onElementUpdate={updateCanvasElement}
                         onElementSelect={selectCanvasElement}
                         onElementDelete={deleteCanvasElement}
+                        onRemoveBackgroundSelectedElement={handleRemoveBackground}
+                        onEditSelectedElement={() => {
+                            if (!selectedElementId) return;
+                            setIsElementEditModalOpen(true);
+                        }}
                         onAddElement={addCanvasElement}
                         textToolActive={textToolActive}
                         onTextToolDeactivate={() => setTextToolActive(false)}
@@ -2958,6 +3183,10 @@ export default function Editor() {
                             <PhotoEditorPlaceholder
                                 canvasImageUrl={canvasImageUrl}
                                 staticImageUrl={imageUrl}
+                                isBackgroundRemoving={isBackgroundRemoving}
+                                hasBackgroundRemoved={hasBackgroundRemoved}
+                                onRemoveBackground={handleRemoveBackground}
+                                onRestoreOriginalImage={handleRestoreOriginalImage}
                                 onSelectPreview={handleSelectPreview}
                                 selectedPreviewId={selectedPreviewId}
                                 aspectRatio={aspectRatio}
@@ -2978,6 +3207,22 @@ export default function Editor() {
                 </div>
 
             </div>
+
+            <ElementEditModal
+                isOpen={isElementEditModalOpen}
+                element={selectedCanvasElement}
+                onClose={() => setIsElementEditModalOpen(false)}
+                onUpdate={(updates) => {
+                    if (!selectedElementId) return;
+                    updateCanvasElement(selectedElementId, updates);
+                }}
+                onDelete={() => {
+                    if (!selectedElementId) return;
+                    deleteCanvasElement(selectedElementId);
+                    setIsElementEditModalOpen(false);
+                }}
+                onRemoveBackground={selectedCanvasElement?.type === "image" ? handleRemoveBackground : undefined}
+            />
 
             <MobileToolsMenu
                 activeTool={activeTool}

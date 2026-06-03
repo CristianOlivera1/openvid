@@ -41,7 +41,7 @@ export default function ContextMenu({
         <>
           <CtxMenuItem
             icon="qlementine-icons:bring-to-front-16"
-            label="Traer al frente"
+            label="Đưa lên trước"
             onClick={() => {
               onBringToFront();
               onClose();
@@ -49,7 +49,7 @@ export default function ContextMenu({
           />
           <CtxMenuItem
             icon="qlementine-icons:bring-to-back-16"
-            label="Enviar atrás"
+            label="Đưa xuống sau"
             onClick={() => {
               onSendToBack();
               onClose();
@@ -58,7 +58,7 @@ export default function ContextMenu({
           <div className="my-1 h-px bg-white/6" />
           <CtxMenuItem
             icon="solar:trash-bin-trash-bold"
-            label="Eliminar capa"
+            label="Xóa lớp"
             onClick={() => {
               onDelete();
               onClose();
@@ -73,7 +73,7 @@ export default function ContextMenu({
           {canGroup && onGroup && (
             <CtxMenuItem
               icon="solar:layers-minimalistic-bold"
-              label={`Agrupar (${selectedIds.length})`}
+              label={`Nhóm (${selectedIds.length})`}
               onClick={() => {
                 onGroup();
                 onClose();
@@ -83,7 +83,7 @@ export default function ContextMenu({
           {canUngroup && onUngroup && (
             <CtxMenuItem
               icon="solar:layers-bold"
-              label="Desagrupar"
+              label="Bỏ nhóm"
               onClick={() => {
                 onUngroup();
                 onClose();
@@ -93,7 +93,7 @@ export default function ContextMenu({
           {(canGroup || canUngroup) && <div className="my-1 h-px bg-white/6" />}
           <CtxMenuItem
             icon="solar:trash-bin-trash-bold"
-            label={`Eliminar ${selectedIds.length} capas`}
+            label={`Xóa ${selectedIds.length} lớp`}
             onClick={() => {
               onDeleteSelected();
               onClose();

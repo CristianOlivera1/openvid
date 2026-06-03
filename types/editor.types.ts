@@ -110,6 +110,8 @@ export interface VideoCanvasProps {
     onElementUpdate?: (id: string, updates: Partial<CanvasElement>) => void;
     onElementSelect?: (id: string | null) => void;
     onElementDelete?: (id: string | string[]) => void;
+    onRemoveBackgroundSelectedElement?: () => void;
+    onEditSelectedElement?: () => void;
     cursorConfig?: CursorConfig;
     cursorData?: CursorRecordingData;
     cameraUrl?: string | null;

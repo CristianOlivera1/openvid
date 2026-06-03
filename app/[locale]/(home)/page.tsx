@@ -27,9 +27,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: 'Free AI-powered online video editor. Screen recorder, cinematic zooms, professional mockups, and HD export. No watermark.',
       keywords: ['video editor', 'screen recorder', 'professional demos', 'video zoom', 'mockups', 'online video editor', 'free video editor'],
     },
+    vi: {
+      title: 'Tạo demo chuyên nghiệp và chỉnh sửa video trong vài giây',
+      description: 'Trình chỉnh sửa video trực tuyến miễn phí có hỗ trợ AI. Ghi màn hình, thêm zoom điện ảnh, mockup chuyên nghiệp và xuất HD. Không có watermark.',
+      keywords: ['trình chỉnh sửa video', 'ghi màn hình', 'demo chuyên nghiệp', 'zoom video', 'mockup', 'chỉnh sửa video online', 'trình chỉnh sửa video miễn phí'],
+    },
   };
 
-  const { title, description, keywords } = metadata[locale as 'es' | 'en'] || metadata.es;
+  const { title, description, keywords } = metadata[locale as 'es' | 'en' | 'vi'] || metadata.es;
 
   return {
     title,
@@ -40,6 +45,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: {
         es: `${baseUrl}/es`,
         en: `${baseUrl}/en`,
+        ru: `${baseUrl}/ru`,
+        vi: `${baseUrl}/vi`,
       },
     },
     openGraph: {
@@ -69,7 +76,7 @@ export default async function Home({ params }: Props) {
 
   return (
     <>
-      <StructuredData data={generateWebAppSchema(locale as 'es' | 'en')} />
+      <StructuredData data={generateWebAppSchema(locale as 'es' | 'en' | 'ru' | 'vi')} />
       <StructuredData data={generateOrganizationSchema()} />
 
       <div className="flex flex-col">

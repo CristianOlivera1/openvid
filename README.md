@@ -136,6 +136,15 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
+## Docker Compose
+```bash
+docker compose up --build
+```
+
+Open [http://localhost:5001](http://localhost:5001)
+
+Docker mounts the project directory into the container, so you can edit code locally and see changes in the running app.
+
 ---
 
 ## 💬 Community

@@ -40,6 +40,10 @@ export interface PhotoEditorPlaceholderProps {
   className?: string;
   canvasImageUrl?: string | null;
   staticImageUrl?: string | null;
+  isBackgroundRemoving?: boolean;
+  hasBackgroundRemoved?: boolean;
+  onRemoveBackground?: () => void;
+  onRestoreOriginalImage?: () => void;
   onSelectPreview?: (config: Preview3DConfig) => void;
   selectedPreviewId?: string;
   aspectRatio?: AspectRatio;
