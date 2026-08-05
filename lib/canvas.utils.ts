@@ -1,5 +1,5 @@
 import { AspectRatio } from "@/types/editor.types";
-import { ZoomStateCanvas, ZoomFragment, calculateZoomPhaseState, zoomLevelToFactor, speedToTransitionMs, easeOutQuart } from "@/types/zoom.types";
+import { ZoomStateCanvas, ZoomFragment, calculateZoomPhaseState, easeZoomTransition, isOrbitalZoomFragment, zoomLevelToFactor, speedToTransitionMs } from "@/types/zoom.types";
 
 export function drawRoundedRect(
     ctx: CanvasRenderingContext2D,
@@ -227,7 +227,9 @@ export function calculateSmoothZoom(
         .filter(f => f.endTime < frameTime)
         .sort((a, b) => b.endTime - a.endTime)[0];
 
-    const isAdvancedZoom = (f: ZoomFragment) => f.enable3D || f.movementEnabled;
+    // `movementEnabled` is for manual A → B motion. Autozoom orbital paths
+    // are advanced too, even when a legacy backend fragment sets it to false.
+    const isAdvancedZoom = (f: ZoomFragment) => f.enable3D || f.movementEnabled || isOrbitalZoomFragment(f);
 
     // Shared scale curve: entry ramps INSIDE the fragment, then holds flat.
     // Used for BOTH simple and advanced zoom while the fragment is active.
@@ -237,7 +239,7 @@ export function calculateSmoothZoom(
         const timeIntoFragment = time - fragment.startTime;
         if (transitionSec > 0 && timeIntoFragment < transitionSec) {
             const progress = Math.min(1, Math.max(0, timeIntoFragment / transitionSec));
-            return 1 + (targetScale - 1) * easeOutQuart(progress);
+            return 1 + (targetScale - 1) * easeZoomTransition(progress);
         }
         return targetScale;
     };
@@ -251,7 +253,7 @@ export function calculateSmoothZoom(
         if (timeSinceEnd >= transitionSec) return null;
         const targetScale = zoomLevelToFactor(fragment.zoomLevel);
         const progress = Math.min(1, Math.max(0, timeSinceEnd / transitionSec));
-        const easedProgress = easeOutQuart(progress);
+        const easedProgress = easeZoomTransition(progress);
         return targetScale - (targetScale - 1) * easedProgress;
     };
 
@@ -287,24 +289,15 @@ export function calculateSmoothZoom(
         if (exitScale !== null) {
             if (isAdvancedZoom(previousFragment)) {
                 const phaseState = calculateZoomPhaseState(previousFragment, frameTime, true);
-
-                const focusX = previousFragment.movementEnabled
-                    ? (previousFragment.movementEndX ?? previousFragment.focusX)
-                    : previousFragment.focusX;
-                const focusY = previousFragment.movementEnabled
-                    ? (previousFragment.movementEndY ?? previousFragment.focusY)
-                    : previousFragment.focusY;
-
                 return {
                     scale: exitScale,
-                    focusX,
-                    focusY,
+                    focusX: phaseState.focusX,
+                    focusY: phaseState.focusY,
                     rotateX: phaseState.rotateX,
                     rotateY: phaseState.rotateY,
                     perspective: phaseState.perspective,
                 };
             }
-
             return {
                 scale: exitScale,
                 focusX: previousFragment.focusX,

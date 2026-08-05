@@ -106,17 +106,6 @@ export function useImageProjects() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => {
-        loadProjects();
-    }, []);
-
-    useEffect(() => {
-        const currentId = getCurrentProjectId();
-        if (currentId && !currentProject) {
-            loadProject(currentId);
-        }
-    }, []);
-
     const loadProjects = useCallback(async (showLoading = true) => {
         if (showLoading) {
             setIsLoading(true);
@@ -148,6 +137,32 @@ export function useImageProjects() {
         } finally {
             setIsLoading(false);
         }
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (!cancelled) {
+                loadProjects();
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (cancelled) return;
+            const currentId = getCurrentProjectId();
+            if (currentId && !currentProject) {
+                loadProject(currentId);
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const createProject = useCallback(async (

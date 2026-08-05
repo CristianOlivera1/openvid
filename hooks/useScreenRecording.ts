@@ -6,7 +6,6 @@ import type { RecordingState, RecordingResult, VideoData, RecordingContextType }
 import type { CameraConfig, RecordingSetupConfig } from "@/types/camera.types";
 import { DEFAULT_RECORDING_SETUP, requestCameraStream, requestMicrophoneStream } from "@/types/camera.types";
 import { clearAllThumbnailCache } from "@/lib/thumbnail-cache";
-import { convertToMp4 } from "@/lib/video-conversion";
 import { clearVideoTrack } from "@/lib/video-upload-cache";
 
 export type { RecordingState, RecordingResult, VideoData, RecordingContextType };
@@ -383,8 +382,7 @@ export function useScreenRecording() {
           try {
             const rawScreenBlob =
               screenBlob || new Blob([], { type: screenMime || "video/webm" });
-            const finalMp4Blob = await convertToMp4(rawScreenBlob);
-            await saveVideoToIndexedDB(finalMp4Blob, duration, {
+            await saveVideoToIndexedDB(rawScreenBlob, duration, {
               cameraBlob,
               cameraConfig: cameraConfigRef.current,
             });
