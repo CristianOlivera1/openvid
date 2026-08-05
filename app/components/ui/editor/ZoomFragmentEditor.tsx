@@ -5,7 +5,7 @@ import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 import { SliderControl } from "../../../../components/ui/SliderControl";
 import type { ZoomFragmentEditorProps } from "@/types/zoom.types";
-import { formatZoomTime, zoomLevelToFactor, speedToTransitionMs, calculateHoldDuration } from "@/types/zoom.types";
+import { formatZoomTime, zoomLevelToFactor, speedToTransitionMs, calculateHoldDuration, getOrbitalFocusAtTimelineTime, getOrbitalTrailForFragmentRange, isOrbitalZoomFragment } from "@/types/zoom.types";
 import { TooltipAction } from "@/components/ui/tooltip-action";
 import { DetailPageHeader } from "@/components/ui/DetailHeaderMenu";
 import { Toggle } from "@/components/ui/toggle";
@@ -35,8 +35,16 @@ export function ZoomFragmentEditor({
     const movementEndX = fragment.movementEndX ?? fragment.focusX;
     const movementEndY = fragment.movementEndY ?? fragment.focusY;
     const movementEnabled = fragment.movementEnabled ?? false;
+    const isOrbital = isOrbitalZoomFragment(fragment);
+    const hasLinearMovement = movementEnabled && !isOrbital;
+    const orbitalFocus = isOrbital ? getOrbitalFocusAtTimelineTime(fragment, currentTime) : null;
+    const previewFocus = orbitalFocus ?? { x: fragment.focusX, y: fragment.focusY };
+    const orbitalPath = useMemo(() => getOrbitalTrailForFragmentRange(fragment)
+        .map((point) => `${point.x},${point.y}`)
+        .join(" "), [fragment]);
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>, point: 'start' | 'end') => {
+        if (isOrbital) return;
         e.preventDefault();
         e.stopPropagation();
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -58,16 +66,18 @@ export function ZoomFragmentEditor({
     };
 
     const handlePreviewClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (isOrbital) return;
         if ((e.target as HTMLElement).closest('[data-drag-handle]')) return;
         if (!focusPreviewRef.current) return;
         const rect = focusPreviewRef.current.getBoundingClientRect();
         const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
         const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
-        if (movementEnabled && editingPoint === 'end') { onUpdate({ movementEndX: x, movementEndY: y }); }
+        if (hasLinearMovement && editingPoint === 'end') { onUpdate({ movementEndX: x, movementEndY: y }); }
         else { onUpdate({ focusX: x, focusY: y }); }
     };
 
     const handleToggleMovement = () => {
+        if (isOrbital) return;
         if (!movementEnabled) {
             const holdDuration = calculateHoldDuration(fragment);
             const endX = Math.min(85, Math.max(15, fragment.focusX + 25));
@@ -105,8 +115,8 @@ export function ZoomFragmentEditor({
                 <div>
                     <div className="flex items-center gap-2 text-xs mb-2 text-white/70">
                         <Icon icon="material-symbols:center-focus-strong-outline" width="16" />
-                        <span>{movementEnabled ? t("focusPoints.multiple") : t("focusPoints.single")}</span>
-                        {movementEnabled && (
+                        <span>{(hasLinearMovement || isOrbital) ? t("focusPoints.multiple") : t("focusPoints.single")}</span>
+                        {hasLinearMovement && (
                             <div className="ml-auto flex gap-1">
                                 <button
                                     onClick={() => setEditingPoint('start')}
@@ -127,7 +137,7 @@ export function ZoomFragmentEditor({
                         ref={focusPreviewRef}
                         className="relative w-full squircle-element overflow-hidden bg-[#0a0a0e] border border-white/10 select-none"
                         style={{ aspectRatio: videoDimensions ? `${videoDimensions.width}/${videoDimensions.height}` : "16/9" }}
-                        onClick={handlePreviewClick}
+                        onClick={isOrbital ? undefined : handlePreviewClick}
                     >
                         {dynamicThumbnail ? (
                             <img src={dynamicThumbnail} alt={t("preview.alt")} className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none" />
@@ -137,10 +147,17 @@ export function ZoomFragmentEditor({
 
                         <div
                             className="absolute border border-dashed border-blue-500/50 bg-linear-to-b from-blue-500/20 to-transparent squircle-element pointer-events-none transition-opacity duration-200"
-                            style={{ width: `${100 / zoomLevelToFactor(fragment.zoomLevel)}%`, height: `${100 / zoomLevelToFactor(fragment.zoomLevel)}%`, left: `${fragment.focusX}%`, top: `${fragment.focusY}%`, transform: 'translate(-50%, -50%)', opacity: movementEnabled && editingPoint === 'end' ? 0.4 : 1, willChange: "left, top" }}
+                            style={{ width: `${100 / zoomLevelToFactor(fragment.zoomLevel)}%`, height: `${100 / zoomLevelToFactor(fragment.zoomLevel)}%`, left: `${previewFocus.x}%`, top: `${previewFocus.y}%`, transform: 'translate(-50%, -50%)', opacity: hasLinearMovement && editingPoint === 'end' ? 0.4 : 1, willChange: "left, top" }}
                         />
 
-                        {movementEnabled && (() => {
+                        {isOrbital && orbitalPath && (
+                            <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }} viewBox="0 0 100 100" preserveAspectRatio="none">
+                                <polyline points={orbitalPath} fill="none" stroke="rgba(168, 85, 247, 0.8)" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                                <circle cx={previewFocus.x} cy={previewFocus.y} r="1.8" fill="rgb(216, 180, 254)" stroke="white" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+                            </svg>
+                        )}
+
+                        {hasLinearMovement && (() => {
                             const dx = movementEndX - fragment.focusX;
                             const dy = movementEndY - fragment.focusY;
                             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -160,20 +177,20 @@ export function ZoomFragmentEditor({
                             );
                         })()}
 
-                        {movementEnabled && (
+                        {hasLinearMovement && (
                             <div
                                 className="absolute border border-dashed border-emerald-500/50 bg-linear-to-b from-emerald-500/20 to-transparent squircle-element pointer-events-none transition-opacity duration-200"
                                 style={{ width: `${100 / zoomLevelToFactor(fragment.zoomLevel)}%`, height: `${100 / zoomLevelToFactor(fragment.zoomLevel)}%`, left: `${movementEndX}%`, top: `${movementEndY}%`, transform: 'translate(-50%, -50%)', opacity: editingPoint === 'start' ? 0.4 : 1, willChange: "left, top" }}
                             />
                         )}
 
-                        <div data-drag-handle className={`absolute z-10 cursor-grab active:cursor-grabbing touch-none transition-[opacity,transform] duration-150 ${movementEnabled && editingPoint === 'end' ? 'opacity-60 scale-90' : ''}`} style={{ left: `${fragment.focusX}%`, top: `${fragment.focusY}%`, transform: "translate(-50%, -50%)", willChange: "left, top" }} onPointerDown={(e) => handlePointerDown(e, 'start')}>
+                        {!isOrbital && <div data-drag-handle className={`absolute z-10 cursor-grab active:cursor-grabbing touch-none transition-[opacity,transform] duration-150 ${hasLinearMovement && editingPoint === 'end' ? 'opacity-60 scale-90' : ''}`} style={{ left: `${fragment.focusX}%`, top: `${fragment.focusY}%`, transform: "translate(-50%, -50%)", willChange: "left, top" }} onPointerDown={(e) => handlePointerDown(e, 'start')}>
                             <div className="size-8 rounded-full bg-blue-500 shadow-lg border-2 border-white/80 hover:scale-110 transition-transform flex items-center justify-center">
                                 <span className="text-[8px] font-bold text-white">A</span>
                             </div>
-                        </div>
+                        </div>}
 
-                        {movementEnabled && (
+                        {hasLinearMovement && (
                             <div data-drag-handle className={`absolute z-10 cursor-grab active:cursor-grabbing touch-none transition-[opacity,transform] duration-150 ${editingPoint === 'start' ? 'opacity-60 scale-90' : ''}`} style={{ left: `${movementEndX}%`, top: `${movementEndY}%`, transform: "translate(-50%, -50%)", willChange: "left, top" }} onPointerDown={(e) => handlePointerDown(e, 'end')}>
                                 <div className="size-8 rounded-full bg-emerald-500 shadow-lg border-2 border-white/80 hover:scale-110 transition-transform flex items-center justify-center">
                                     <span className="text-[8px] font-bold text-white">B</span>
@@ -183,7 +200,7 @@ export function ZoomFragmentEditor({
 
                         <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none">
                             <span className="text-[7px] text-white/20 font-mono uppercase tracking-[0.3em]">
-                                {movementEnabled ? t("preview.dragAB") : t("preview.dragOrClick")}
+                                {isOrbital ? t("preview.orbitalPath") : hasLinearMovement ? t("preview.dragAB") : t("preview.dragOrClick")}
                             </span>
                         </div>
                     </div>
@@ -200,13 +217,18 @@ export function ZoomFragmentEditor({
                             </div>
                         </div>
                         <Toggle
-                            checked={movementEnabled ?? false}
+                            checked={isOrbital || movementEnabled}
                             onChange={handleToggleMovement}
-                            activeColor="bg-emerald-500"
+                            activeColor={isOrbital ? "bg-violet-500" : "bg-emerald-500"}
+                            disabled={isOrbital}
                         />
                     </div>
 
-                    {movementEnabled && (() => {
+                    {isOrbital && (
+                        <p className="text-[11px] text-violet-200/60 leading-relaxed">{t("movement.orbitalDescription")}</p>
+                    )}
+
+                    {hasLinearMovement && (() => {
                         const holdDuration = calculateHoldDuration(fragment);
                         const startOffset = fragment.movementStartOffset ?? 0;
                         const endOffset = fragment.movementEndOffset ?? holdDuration;

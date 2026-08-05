@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { motion, useMotionValue } from "framer-motion";
 import type { ZoomFragment } from "@/types/zoom.types";
-import { zoomLevelToFactor } from "@/types/zoom.types";
+import { isOrbitalZoomFragment, zoomLevelToFactor } from "@/types/zoom.types";
 
 const MIN_FRAGMENT_DURATION = 0.5;
 
@@ -107,10 +107,19 @@ export function ZoomFragmentTrackItem({
 
         const newStartTime = pixelsToTime(fragmentX.get());
         const duration = fragment.endTime - fragment.startTime;
+        const nextStartTime = Math.max(0, newStartTime);
+        const nextEndTime = Math.min(contentDuration ?? videoDuration, newStartTime + duration);
+        const timelineShift = nextStartTime - fragment.startTime;
 
         onUpdate({
-            startTime: Math.max(0, newStartTime),
-            endTime: Math.min(contentDuration ?? videoDuration, newStartTime + duration),
+            startTime: nextStartTime,
+            endTime: nextEndTime,
+            // Moving the full fragment preserves the same source-time offset.
+            // Resizing intentionally does not change this anchor: it trims the
+            // backend trajectory instead of restarting or stretching it.
+            ...(isOrbitalZoomFragment(fragment) ? {
+                trailSourceStartTime: (fragment.trailSourceStartTime ?? fragment.startTime) + timelineShift,
+            } : {}),
         });
     }, [fragmentX, pixelsToTime, fragment, videoDuration, contentDuration, onUpdate, onDragStateChange]);
 
@@ -172,6 +181,11 @@ export function ZoomFragmentTrackItem({
         onUpdate({
             startTime: Math.max(0, newStartTime),
             endTime: Math.min(contentDuration ?? videoDuration, newEndTime),
+            // Persist the original timeline anchor for Autozoom fragments
+            // created before `trailSourceStartTime` was introduced.
+            ...(isOrbitalZoomFragment(fragment) ? {
+                trailSourceStartTime: fragment.trailSourceStartTime ?? fragment.startTime,
+            } : {}),
         });
     }, [fragmentX, fragmentWidth, pixelsToTime, videoDuration, contentDuration, onUpdate, onDragStateChange]);
 

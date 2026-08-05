@@ -4,9 +4,10 @@ import { useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { saveUploadedVideo, clearVideoTrack } from "@/lib/video-upload-cache";
 import { saveUploadedImage } from "@/lib/image-upload-cache";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import GitHubBadge from "@/components/ui/GitHubStars";
+import { useAuth } from "@/app/contexts/useAuth";
 
 interface HeroProps {
     onVideoUpload?: (file: File) => void;
@@ -15,7 +16,9 @@ interface HeroProps {
 
 export default function Hero({ onVideoUpload, onPhotoUpload }: HeroProps) {
     const t = useTranslations("hero");
+    const locale = useLocale();
     const router = useRouter();
+    const { user, loading: isAuthLoading } = useAuth();
 
     const videoInputRef = useRef<HTMLInputElement>(null);
     const [isDraggingVideo, setIsDraggingVideo] = useState(false);
@@ -23,7 +26,7 @@ export default function Hero({ onVideoUpload, onPhotoUpload }: HeroProps) {
 
     const handleVideoFile = useCallback(
         async (file: File) => {
-            if (!file.type.startsWith("video/")) return;
+            if (!file.type.startsWith("video/") || isAuthLoading) return;
             setIsUploadingVideo(true);
             try {
                 await saveUploadedVideo(file);
@@ -31,13 +34,18 @@ export default function Hero({ onVideoUpload, onPhotoUpload }: HeroProps) {
                 if (onVideoUpload) {
                     onVideoUpload(file);
                 }
-                router.push("/editor?mode=video");
+                const editorPath = `/${locale}/editor?mode=video`;
+                if (!user) {
+                    router.push(`/${locale}/login?redirectedFrom=${encodeURIComponent(editorPath)}&autoupload=1`);
+                    return;
+                }
+                router.push(`${editorPath}&autoupload=1`);
             } catch (error) {
                 console.error("Error uploading video:", error);
                 setIsUploadingVideo(false);
             }
         },
-        [onVideoUpload, router]
+        [isAuthLoading, locale, onVideoUpload, router, user]
     );
 
     const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,16 +171,16 @@ export default function Hero({ onVideoUpload, onPhotoUpload }: HeroProps) {
                         onDragOver={handleVideoDragOver}
                         onDragLeave={handleVideoDragLeave}
                         onDrop={handleVideoDrop}
-                        onClick={() => !isUploadingVideo && videoInputRef.current?.click()}
+                        onClick={() => !isUploadingVideo && !isAuthLoading && videoInputRef.current?.click()}
                         className={`relative flex items-center justify-center px-5 squircle-element border-2 border-dashed cursor-pointer transition-all duration-200 text-sm font-medium w-full h-13 ${isDraggingVideo
                             ? "border-blue-400/70 bg-blue-500/10 text-blue-300 scale-[1.02]"
-                            : isUploadingVideo
+                            : isUploadingVideo || isAuthLoading
                                 ? "border-white/20 bg-white/5 text-white/40 cursor-not-allowed"
                                 : "border-white/20 bg-white/5 text-white/90 hover:border-white/40 hover:bg-white/10 hover:text-white/80"
                             }`}
                     >
                         <div className="flex items-center justify-center gap-3 pointer-events-none w-full">
-                            {isUploadingVideo ? (
+                            {isUploadingVideo || isAuthLoading ? (
                                 <>
                                     <Icon
                                         icon="svg-spinners:ring-resize"
