@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { loadVideoFromIndexedDB, deleteRecordedVideo } from "@/hooks/useScreenRecording";
 import { useVideoUpload } from "@/hooks/useVideoUpload";
 import { useImageProjects } from "@/hooks/useImageProjects";
-import { getUploadedVideo, deleteUploadedVideo, saveVideoTrack, getVideoTrack } from "@/lib/video-upload-cache";
+import { getUploadedVideo, deleteUploadedVideo, saveVideoTrack, getVideoTrack, saveZoomFragments, getZoomFragments } from "@/lib/video-upload-cache";
 import { getUploadedImage, deleteUploadedImage } from "@/lib/image-upload-cache";
 import { useEditorMode } from "@/hooks/useEditorMode";
 import { useActiveTool } from "@/hooks/useActiveTool";
@@ -48,6 +48,13 @@ import Link from "next/link";
 import { TooltipAction } from "@/components/ui/tooltip-action";
 import { bgImagesDelete, bgImagesGetAll, bgImagesSave } from "@/lib/bg-images-idb";
 import { DEFAULT_MOCKUP_MOTION_CONFIG, findValidMotionPlacement, MockupMotionFragment, MockupMotionPresetId } from "@/lib/mockup-motion";
+import { useAutozoomJob } from "@/hooks/useAutozoomJob";
+import { useRouter } from "@/navigation";
+import { useSearchParams } from "next/navigation";
+import { consumeUploadedVideo as consumeCachedUploadedVideo } from "@/lib/video-upload-cache";
+import { toEditorZoomFragments, type AutozoomJob } from "@/lib/autozoom-api";
+import { getCompletedAutozoomVideoById, type AutozoomLibraryVideo } from "@/lib/autozoom-jobs-repo";
+import { createClient } from "@/utils/supabase/client";
 
 const ControlPanel = lazy(() => import("@/app/components/ui/editor/ControlPanel").then(mod => ({ default: mod.ControlPanel })));
 const Timeline = lazy(() => import("@/app/components/ui/editor/Timeline").then(mod => ({ default: mod.Timeline })));
@@ -55,10 +62,26 @@ const ExportOverlay = lazy(() => import("@/app/components/ui/ExportOverlay").the
 const VideoCropperModal = lazy(() => import("@/app/components/ui/editor/VideoCropperModal").then(mod => ({ default: mod.VideoCropperModal })));
 const ImageCropperModal = lazy(() => import("@/app/components/ui/editor/ImageCropperModal").then(mod => ({ default: mod.ImageCropperModal })));
 const PhotoEditorPlaceholder = lazy(() => import("@/app/components/ui/editor/PhotoEditorPlaceholder").then(mod => ({ default: mod.PhotoEditorPlaceholder })));
+const AutozoomUploadOverlay = lazy(() => import("@/app/components/ui/editor/AutozoomUploadOverlay").then(mod => ({ default: mod.AutozoomUploadOverlay })));
 
 export default function Editor() {
     // Editor mode (video/photo) from URL params
     const { mode: editorMode, isVideoMode, isPhotoMode } = useEditorMode();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const { user, session } = useAuth();
+    const supabase = useMemo(() => createClient(), []);
+    const autouploadRequested = searchParams.get("autoupload") === "1";
+
+    const {
+        state: autozoomState,
+        start: startAutozoom,
+        retry: retryAutozoom,
+        reset: resetAutozoom,
+    } = useAutozoomJob({ user, session });
+
+    const autozoomHandledRef = useRef(false);
+    const committedAutozoomJobIdsRef = useRef<Set<string>>(new Set());
 
     const {
         imagePhoneActive, setImagePhoneActive,
@@ -1317,6 +1340,14 @@ export default function Editor() {
                             currentBlobs.set(clip.libraryVideoId, libraryVideo.blob);
                             const url = URL.createObjectURL(libraryVideo.blob);
                             setClipUrl(clip.libraryVideoId, url);
+                        } else {
+                            const remoteVideo = await getCompletedAutozoomVideoById(supabase, clip.libraryVideoId);
+                            if (!remoteVideo) continue;
+                            const response = await fetch(remoteVideo.outputUrl);
+                            if (!response.ok) throw new Error(`autozoom_video_fetch_${response.status}`);
+                            const blob = await response.blob();
+                            currentBlobs.set(clip.libraryVideoId, blob);
+                            setClipUrl(clip.libraryVideoId, URL.createObjectURL(blob));
                         }
                     } catch (e) {
                         console.warn("Failed to load video blob for clip:", clip.id, e);
@@ -1328,7 +1359,7 @@ export default function Editor() {
         if (videoClips.length > 0) {
             loadClipBlobs();
         }
-    }, [videoClips, setClipUrl, deleteClipUrl]);
+    }, [videoClips, setClipUrl, deleteClipUrl, supabase]);
 
     const { exportVideo, cancelExport, exportProgress } = useVideoExport(videoRef, canvasRef);
     const { uploadVideo, loadUploadedVideo, isUploading } = useVideoUpload();
@@ -1480,15 +1511,64 @@ export default function Editor() {
     }, [isPhotoMode, handleVideoUpload]);
 
     const handleVideoUploadToLibrary = useCallback(async (file: File) => {
-        try {
-            await addVideoToLibrary(file);
-            const count = await getLibraryVideoCount();
-            showNewVideosBadge(count);
-            setVideosLibraryRefresh(prev => prev + 1);
-        } catch (error) {
-            console.warn("Failed to add video to library:", error);
+        await startAutozoom(file);
+    }, [startAutozoom]);
+
+    // Completed backend jobs are the durable video library. Their source URL
+    // and zoom fragments come from R2/Supabase, not from IndexedDB.
+    const handleAddAutozoomVideoToTrack = useCallback(async (remoteVideo: AutozoomLibraryVideo) => {
+        const response = await fetch(remoteVideo.outputUrl);
+        if (!response.ok) throw new Error(`autozoom_video_fetch_${response.status}`);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const sourceDuration = remoteVideo.duration;
+        const startTime = findNextClipPosition(videoClipsRef.current);
+        const clip: VideoTrackClip = {
+            id: crypto.randomUUID(),
+            libraryVideoId: remoteVideo.id,
+            name: remoteVideo.fileName,
+            startTime,
+            duration: sourceDuration,
+            trimStart: 0,
+            trimEnd: sourceDuration,
+            width: remoteVideo.width ?? undefined,
+            height: remoteVideo.height ?? undefined,
+        };
+
+        videoBlobsRef.current.set(remoteVideo.id, blob);
+        setClipUrl(remoteVideo.id, url);
+        clipAudioStateRef.current.set(remoteVideo.id, true);
+        setVideoClips((previous) => [...previous, clip]);
+
+        const placedFragments = toEditorZoomFragments(remoteVideo.job).map((fragment) => ({
+            ...fragment,
+            id: crypto.randomUUID(),
+            startTime: fragment.startTime + startTime,
+            endTime: fragment.endTime + startTime,
+            trailSourceStartTime: fragment.trailSourceStartTime === undefined
+                ? undefined
+                : fragment.trailSourceStartTime + startTime,
+        }));
+        setZoomFragments((previous) => [...previous, ...placedFragments].sort((a, b) => a.startTime - b.startTime));
+
+        const updatedClips = [...videoClipsRef.current, clip];
+        const totalDuration = calculateTotalDuration(updatedClips);
+        setVideoDuration(totalDuration);
+        setTrimRange({ start: 0, end: totalDuration });
+
+        if (videoClipsRef.current.length === 0) {
+            activeClipIdRef.current = clip.id;
+            activeClipDataRef.current = clip;
+            setVideoBlob(blob);
+            setVideoUrl(url);
+            setVideoId(remoteVideo.id);
+            setVideoDimensions(remoteVideo.width && remoteVideo.height ? { width: remoteVideo.width, height: remoteVideo.height } : null);
+            setAspectRatio("auto");
+            setCurrentTime(0);
+            setIsPlaying(false);
+            setTimeout(() => clearHistory(), 200);
         }
-    }, [showNewVideosBadge]);
+    }, [clearHistory, setClipUrl]);
 
     useEffect(() => {
         return () => {
@@ -1819,14 +1899,25 @@ export default function Editor() {
                         const validClips: VideoTrackClip[] = [];
                         for (const clip of persistedClips) {
                             const libVideo = await getLibraryVideo(clip.libraryVideoId);
-                            if (!libVideo) continue;
-                            validClips.push(clip);
-                            if (!videoBlobsRef.current.has(clip.libraryVideoId)) {
-                                videoBlobsRef.current.set(clip.libraryVideoId, libVideo.blob);
-                                const url = URL.createObjectURL(libVideo.blob);
-                                setClipUrl(clip.libraryVideoId, url);
+                            if (libVideo) {
+                                validClips.push(clip);
+                                if (!videoBlobsRef.current.has(clip.libraryVideoId)) {
+                                    videoBlobsRef.current.set(clip.libraryVideoId, libVideo.blob);
+                                    const url = URL.createObjectURL(libVideo.blob);
+                                    setClipUrl(clip.libraryVideoId, url);
+                                }
+                                clipAudioStateRef.current.set(clip.libraryVideoId, libVideo.hasAudio !== false);
+                            } else {
+                                const remoteVideo = await getCompletedAutozoomVideoById(supabase, clip.libraryVideoId);
+                                if (!remoteVideo) continue;
+                                const response = await fetch(remoteVideo.outputUrl);
+                                if (!response.ok) continue;
+                                const blob = await response.blob();
+                                validClips.push(clip);
+                                videoBlobsRef.current.set(clip.libraryVideoId, blob);
+                                setClipUrl(clip.libraryVideoId, URL.createObjectURL(blob));
+                                clipAudioStateRef.current.set(clip.libraryVideoId, true);
                             }
-                            clipAudioStateRef.current.set(clip.libraryVideoId, libVideo.hasAudio !== false);
                         }
 
                         if (validClips.length > 0) {
@@ -1848,7 +1939,12 @@ export default function Editor() {
                                     videoRef.current.src = firstUrl;
                                 }
                             }
-                            setZoomFragments(generateDefaultZoomFragments(totalDuration));
+                            const persistedFragments = await getZoomFragments();
+                            setZoomFragments(
+                                persistedFragments && persistedFragments.length > 0
+                                    ? persistedFragments
+                                    : generateDefaultZoomFragments(totalDuration)
+                            );
                             setVideosLibraryRefresh(prev => prev + 1);
                             setTimeout(() => clearHistory(), 200);
                         }
@@ -1857,9 +1953,9 @@ export default function Editor() {
                 }
 
                 const [uploadedData, recordedData, cachedUpload] = await Promise.all([
-                    loadUploadedVideo(),
+                    autouploadRequested ? null : loadUploadedVideo(),
                     loadVideoFromIndexedDB(),
-                    getUploadedVideo(),
+                    autouploadRequested ? null : getUploadedVideo(),
                 ]);
                 let videoToLoad: typeof uploadedData | typeof recordedData = null;
                 let resolvedBlob: Blob | null = null;
@@ -1996,7 +2092,76 @@ export default function Editor() {
 
         document.addEventListener("visibilitychange", handleVisibilityChange);
         return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-    }, [loadUploadedVideo, clearHistory, isPhotoMode, setClipUrl]);
+    }, [loadUploadedVideo, clearHistory, isPhotoMode, setClipUrl, autouploadRequested, supabase]);
+
+    useEffect(() => {
+        if (isPhotoMode || !autouploadRequested) return;
+        if (autozoomHandledRef.current) return;
+        if (!user || !session?.access_token) return; // esperar a que resuelva el auth
+        autozoomHandledRef.current = true;
+
+        (async () => {
+            const cached = await consumeCachedUploadedVideo();
+
+            // Remove the one-shot instruction before any network work. This
+            // prevents a browser refresh from starting a second backend job.
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("autoupload");
+            router.replace(`?${params.toString()}`, { scroll: false });
+
+            if (!cached) return;
+            const file = new File([cached.blob], cached.fileName, {
+                type: cached.blob.type || "video/mp4",
+            });
+            await startAutozoom(file);
+        })();
+    }, [isPhotoMode, autouploadRequested, user, session, searchParams, startAutozoom, router]);
+
+    const commitAutozoomResult = useCallback(async (job: AutozoomJob) => {
+        if (!job.output_url) return;
+        if (committedAutozoomJobIdsRef.current.has(job.job_id)) return;
+        committedAutozoomJobIdsRef.current.add(job.job_id);
+        try {
+            await handleAddAutozoomVideoToTrack({
+                id: job.job_id,
+                outputUrl: job.output_url,
+                fileName: autozoomState.fileName || "autozoom-video.mp4",
+                duration: job.video_meta.duration || 0,
+                width: job.video_meta.width,
+                height: job.video_meta.height,
+                job,
+            });
+            setVideosLibraryRefresh((previous) => previous + 1);
+            resetAutozoom();
+        } catch (error) {
+            committedAutozoomJobIdsRef.current.delete(job.job_id);
+            throw error;
+        }
+    }, [autozoomState.fileName, handleAddAutozoomVideoToTrack, resetAutozoom]);
+
+    useEffect(() => {
+        if (autozoomState.status !== "completed" || !autozoomState.job) return;
+        let cancelled = false;
+        const job = autozoomState.job;
+        queueMicrotask(() => {
+            if (!cancelled) {
+                void commitAutozoomResult(job);
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [autozoomState.status, autozoomState.job, commitAutozoomResult]);
+
+    const saveZoomFragmentsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    useEffect(() => {
+        if (isPhotoMode) return;
+        if (saveZoomFragmentsTimeoutRef.current) clearTimeout(saveZoomFragmentsTimeoutRef.current);
+        saveZoomFragmentsTimeoutRef.current = setTimeout(() => {
+            saveZoomFragments(zoomFragments).catch(() => { });
+        }, 500);
+        return () => { if (saveZoomFragmentsTimeoutRef.current) clearTimeout(saveZoomFragmentsTimeoutRef.current); };
+    }, [zoomFragments, isPhotoMode]);
 
     useEffect(() => {
         bgImagesGetAll()
@@ -3057,13 +3222,15 @@ export default function Editor() {
                                         onToggleMuteOriginalAudio={handleToggleMuteOriginalAudio}
                                         onMasterVolumeChange={handleMasterVolumeChange}
                                         videoDuration={videoDuration}
-                                        onAddVideoToTrack={handleAddVideoToTrack}
+                                        onAddVideoToTrack={handleAddAutozoomVideoToTrack}
                                         onRemoveVideoFromTrack={handleRemoveVideoFromTrack}
                                         onVideoUploadToLibrary={handleVideoUploadToLibrary}
                                         onVideoDeleteFromTrack={handleDeleteVideoFromLibrary}
                                         videosInTrackIds={videosInTrackIds}
                                         videosLibraryRefresh={videosLibraryRefresh}
-                                        isVideoUploading={isUploading}
+                                        isVideoUploading={[
+                                            "validating", "uploading", "queueing", "processing",
+                                        ].includes(autozoomState.status)}
                                         cameraUrl={cameraUrl}
                                         cameraConfig={cameraConfig}
                                         onCameraConfigChange={handleCameraConfigChange}
@@ -3355,6 +3522,14 @@ export default function Editor() {
                     exportProgress={exportProgress}
                     onCancel={cancelExport}
                     isTransparentExport={selectedWallpaper === -1}
+                />
+            </Suspense>
+
+            <Suspense fallback={null}>
+                <AutozoomUploadOverlay
+                    state={autozoomState}
+                    onRetry={retryAutozoom}
+                    onDismiss={resetAutozoom}
                 />
             </Suspense>
             <Suspense fallback={null}>
