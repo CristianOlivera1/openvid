@@ -1,5 +1,4 @@
 import { ExtendedVideoForDetection, LibraryVideo, LibraryVideoInfo } from "@/types";
-import { normalizeVideoFile } from "./video-conversion";
 
 const DB_NAME = "openvid-videos-library";
 const DB_VERSION = 3;
@@ -179,14 +178,11 @@ export async function addVideoToLibrary(file: File): Promise<LibraryVideo> {
         console.warn("Failed to detect audio:", e);
     }
 
-    const { blob: normalizedBlob, wasConverted } = await normalizeVideoFile(file);
-    const fileName = wasConverted ? `${file.name.replace(/\.[^/.]+$/, "")}.mp4` : file.name;
-
     const video: LibraryVideo = {
         id: generateVideoId(),
-        blob: normalizedBlob,
-        fileName,
-        fileSize: normalizedBlob.size,
+        blob: file,
+        fileName: file.name,
+        fileSize: file.size,
         duration: metadata.duration,
         width: metadata.width,
         height: metadata.height,
@@ -237,16 +233,11 @@ export async function addVideoToLibraryWithMetadata(
         }
     }
 
-    const { blob: normalizedBlob, wasConverted } = await normalizeVideoFile(options.blob);
-    const fileName = wasConverted
-        ? `${options.fileName.replace(/\.[^/.]+$/, "")}.mp4`
-        : options.fileName;
-
     const video: LibraryVideo = {
         id: generateVideoId(),
-        blob: normalizedBlob,
-        fileName,
-        fileSize: normalizedBlob.size,
+        blob: options.blob,
+        fileName: options.fileName,
+        fileSize: options.blob.size,
         duration: options.duration,
         width: options.width,
         height: options.height,

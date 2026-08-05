@@ -1,4 +1,3 @@
-import { normalizeVideoFile } from "./video-conversion";
 import type { VideoTrackClip } from "@/types/video-track.types";
 
 const DB_NAME = "openvid-uploaded-videos";
@@ -117,14 +116,12 @@ async function getVideoMetadata(source: Blob): Promise<{
 export async function saveUploadedVideo(file: File): Promise<CachedUploadedVideo> {
   try {
     const db = await openDB();
-    const { blob: normalizedBlob, wasConverted } = await normalizeVideoFile(file);
-    const metadata = await getVideoMetadata(normalizedBlob);
-    const fileName = wasConverted ? `${file.name.replace(/\.[^/.]+$/, "")}.mp4` : file.name;
+    const metadata = await getVideoMetadata(file);
     const data: CachedUploadedVideo = {
       key: SINGLE_VIDEO_KEY,
-      blob: normalizedBlob,
-      fileName,
-      fileSize: normalizedBlob.size,
+      blob: file,
+      fileName: file.name,
+      fileSize: file.size,
       duration: metadata.duration,
       width: metadata.width,
       height: metadata.height,
@@ -174,6 +171,34 @@ export async function deleteUploadedVideo(): Promise<void> {
     });
   } catch (error) {
     console.warn("Failed to delete uploaded video:", error);
+  }
+}
+
+/**
+ * Atomically claims the pending post-login upload. React Strict Mode and a
+ * refresh can mount the editor twice; separate get/delete calls allowed both
+ * mounts to start the same backend job.
+ */
+export async function consumeUploadedVideo(): Promise<CachedUploadedVideo | null> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
+      let cached: CachedUploadedVideo | null = null;
+      const request = store.get(SINGLE_VIDEO_KEY);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        cached = (request.result as CachedUploadedVideo | undefined) || null;
+        if (cached) store.delete(SINGLE_VIDEO_KEY);
+      };
+      transaction.oncomplete = () => resolve(cached);
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+  } catch (error) {
+    console.warn("Failed to consume uploaded video:", error);
+    return null;
   }
 }
 
@@ -241,11 +266,57 @@ export async function clearVideoTrack(): Promise<void> {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(TRACK_STORE_NAME, "readwrite");
       const store = transaction.objectStore(TRACK_STORE_NAME);
-      const request = store.delete(TRACK_KEY);
+      store.delete(TRACK_KEY);
+      store.delete(ZOOM_FRAGMENTS_KEY);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  } catch (error) {
+    console.warn("Failed to clear video track:", error);
+  }
+}
+
+import type { ZoomFragment } from "@/types/zoom.types";
+
+const ZOOM_FRAGMENTS_KEY = "current-zoom-fragments";
+
+interface CachedZoomFragments {
+  key: string;
+  fragments: ZoomFragment[];
+  savedAt: number;
+}
+
+export async function saveZoomFragments(fragments: ZoomFragment[]): Promise<void> {
+  try {
+    const db = await openDB();
+    const data: CachedZoomFragments = { key: ZOOM_FRAGMENTS_KEY, fragments, savedAt: Date.now() };
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(TRACK_STORE_NAME, "readwrite");
+      const store = transaction.objectStore(TRACK_STORE_NAME);
+      const request = store.put(data);
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve();
     });
   } catch (error) {
-    console.warn("Failed to clear video track:", error);
+    console.warn("Failed to save zoom fragments:", error);
+  }
+}
+
+export async function getZoomFragments(): Promise<ZoomFragment[] | null> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(TRACK_STORE_NAME, "readonly");
+      const store = transaction.objectStore(TRACK_STORE_NAME);
+      const request = store.get(ZOOM_FRAGMENTS_KEY);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const result = request.result as CachedZoomFragments | undefined;
+        resolve(result ? result.fragments : null);
+      };
+    });
+  } catch (error) {
+    console.warn("Failed to get zoom fragments:", error);
+    return null;
   }
 }
