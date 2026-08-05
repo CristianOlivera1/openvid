@@ -7,7 +7,7 @@ import type { ImageElement } from "@/types/canvas-elements.types";
 import { ASPECT_RATIO_DIMENSIONS } from "@/types";
 import { getWallpaperUrl } from "@/lib/wallpaper.utils";
 import { calculateScaledPadding, applyCanvasBackground, getAspectRatioStyle, getAspectRatioNumber, Corner, getCornerStyle, getNearestCorner, snapRotation, drawImageCover, getMockupOuterRadius, CORNER_SIGNS } from "@/lib/canvas.utils";
-import { speedToTransitionMs, ZOOM_EASING, calculateZoomPhaseState, zoomLevelToFactor } from "@/types/zoom.types";
+import { speedToTransitionMs, ZOOM_EASING, calculateZoomPhaseState, isOrbitalZoomFragment, zoomLevelToFactor } from "@/types/zoom.types";
 import type { ZoomFragment } from "@/types/zoom.types";
 import PlaceholderEditor from "../PlaceholderEditor";
 import { MockupWrapper } from "./mockups/MockupWrapper";
@@ -235,14 +235,20 @@ function VideoCanvasInner({
             };
         }
 
-        // Calculate 3-phase state
-        const phaseState = calculateZoomPhaseState(activeZoomFragment, currentTime);
+        const isOrbital = isOrbitalZoomFragment(activeZoomFragment);
+        // Orbital focus is sampled directly from the backend trail. Its scale
+        // must be sampled with the same curve as export; otherwise the 0 ms
+        // focus transition makes the zoom-in snap to its final scale.
+        const phaseState = calculateZoomPhaseState(activeZoomFragment, currentTime, isOrbital);
         const translateX = 50 - phaseState.focusX;
         const translateY = 50 - phaseState.focusY;
 
-        // During hold phase with movement, reduce transition to avoid jarring
-        const isMoving = activeZoomFragment.movementEnabled && phaseState.phase === 'hold';
-        const transitionMs = isMoving ? 50 : speedToTransitionMs(activeZoomFragment.speed);
+        // Backend orbital trails are sampled at the current video time. CSS
+        // interpolation would lag behind the cursor and bend the trajectory,
+        // so apply those frames directly. Manual A → B movement keeps its
+        // lightweight linear transition during the hold phase.
+        const isMoving = isOrbital || (activeZoomFragment.movementEnabled && phaseState.phase === 'hold');
+        const transitionMs = isOrbital ? 0 : isMoving ? 50 : speedToTransitionMs(activeZoomFragment.speed);
 
         return {
             scale: phaseState.scale,
