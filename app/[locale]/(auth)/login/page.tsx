@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import { Link } from "@/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 type OAuthProvider = "google" | "github" | "twitch";
 
@@ -42,6 +42,7 @@ const providers: ProviderConfig[] = [
 
 export default function Login() {
   const t = useTranslations('login');
+  const locale = useLocale();
   const [loading, setLoading] = useState<OAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
   const supabase = createClient();
@@ -51,12 +52,22 @@ export default function Login() {
       setLoading(provider);
       setError(null);
 
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const redirectUrl = new URL(`/${locale}/auth/callback`, window.location.origin);
+      const loginParams = new URL(window.location.href).searchParams;
+      const redirectedFrom = loginParams.get("redirectedFrom");
+      const autoupload = loginParams.get("autoupload");
+
+      if (redirectedFrom) {
+        redirectUrl.searchParams.set("redirectedFrom", redirectedFrom);
+      }
+      if (autoupload === "1") {
+        redirectUrl.searchParams.set("autoupload", autoupload);
+      }
 
       const { error: signInError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: redirectUrl.toString(),
           queryParams: {
             access_type: "offline",
             prompt: "consent",
