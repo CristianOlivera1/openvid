@@ -1,5 +1,108 @@
 import { VideoThumbnail } from "./editor.types";
 
+export interface TrailPoint {
+    t: number;
+    x: number;
+    y: number;
+    zoomLevelLocal?: number | null;
+}
+
+type FocusPoint = Pick<TrailPoint, "x" | "y">;
+
+const clampFocusCoordinate = (value: number, fallback: number) =>
+    Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : fallback;
+
+/**
+ * An orbital fragment is driven by the cursor trail produced by Autozoom.
+ * `movementEnabled` belongs to the manual A → B movement and must not be
+ * consulted for these fragments: older jobs can legitimately set it to false.
+ */
+export function isOrbitalZoomFragment(fragment: ZoomFragment): boolean {
+    return fragment.movementMode === "orbital";
+}
+
+/**
+ * Gets the camera focus for a backend-generated cursor trail.
+ *
+ * Catmull-Rom interpolation removes the visible velocity corners of a
+ * point-by-point linear interpolation while preserving every sampled point.
+ * This is shared by the editor preview and the canvas export path.
+ */
+export function getOrbitalFocus(fragment: ZoomFragment, timeInTrail: number): FocusPoint | null {
+    if (!isOrbitalZoomFragment(fragment)) return null;
+
+    const trail = [...(fragment.trail ?? [])]
+        .filter((point) => Number.isFinite(point.t) && Number.isFinite(point.x) && Number.isFinite(point.y))
+        .sort((a, b) => a.t - b.t);
+    if (trail.length === 0) return null;
+
+    const pointAt = (point: TrailPoint): FocusPoint => ({
+        x: clampFocusCoordinate(point.x, fragment.focusX),
+        y: clampFocusCoordinate(point.y, fragment.focusY),
+    });
+
+    if (trail.length === 1 || timeInTrail <= trail[0].t) return pointAt(trail[0]);
+    if (timeInTrail >= trail[trail.length - 1].t) return pointAt(trail[trail.length - 1]);
+
+    let segmentIndex = 0;
+    for (let index = 0; index < trail.length - 1; index += 1) {
+        if (timeInTrail <= trail[index + 1].t) {
+            segmentIndex = index;
+            break;
+        }
+    }
+
+    const p1 = pointAt(trail[segmentIndex]);
+    const p2 = pointAt(trail[segmentIndex + 1]);
+    const p0 = pointAt(trail[Math.max(0, segmentIndex - 1)]);
+    const p3 = pointAt(trail[Math.min(trail.length - 1, segmentIndex + 2)]);
+    const segmentDuration = trail[segmentIndex + 1].t - trail[segmentIndex].t;
+    const t = segmentDuration > 0
+        ? Math.max(0, Math.min(1, (timeInTrail - trail[segmentIndex].t) / segmentDuration))
+        : 0;
+    const t2 = t * t;
+    const t3 = t2 * t;
+    const interpolate = (a: number, b: number, c: number, d: number) =>
+        0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+
+    return {
+        x: clampFocusCoordinate(interpolate(p0.x, p1.x, p2.x, p3.x), p1.x),
+        y: clampFocusCoordinate(interpolate(p0.y, p1.y, p2.y, p3.y), p1.y),
+    };
+}
+
+/**
+ * Resolve an orbital point at an absolute editor time. The trail keeps the
+ * source timing from Autozoom when a user trims either edge of a fragment;
+ * otherwise trimming the left edge would restart the cursor at trail.t = 0.
+ */
+export function getOrbitalFocusAtTimelineTime(fragment: ZoomFragment, currentTime: number): FocusPoint | null {
+    const sourceStartTime = fragment.trailSourceStartTime ?? fragment.startTime;
+    return getOrbitalFocus(fragment, currentTime - sourceStartTime);
+}
+
+/** Returns only the part of an Autozoom trajectory that remains after a trim. */
+export function getOrbitalTrailForFragmentRange(fragment: ZoomFragment): FocusPoint[] {
+    if (!isOrbitalZoomFragment(fragment)) return [];
+
+    const sourceStartTime = fragment.trailSourceStartTime ?? fragment.startTime;
+    const from = fragment.startTime - sourceStartTime;
+    const to = fragment.endTime - sourceStartTime;
+    const start = getOrbitalFocus(fragment, from);
+    const end = getOrbitalFocus(fragment, to);
+    if (!start || !end) return [];
+
+    const interior = [...(fragment.trail ?? [])]
+        .filter((point) => Number.isFinite(point.t) && point.t > from && point.t < to)
+        .sort((a, b) => a.t - b.t)
+        .map((point) => ({
+            x: clampFocusCoordinate(point.x, fragment.focusX),
+            y: clampFocusCoordinate(point.y, fragment.focusY),
+        }));
+
+    return [start, ...interior, end];
+}
+
 export interface ZoomFragment {
     id: string;
     startTime: number;
@@ -13,6 +116,10 @@ export interface ZoomFragment {
     movementEndY?: number;
     movementStartOffset?: number;
     movementEndOffset?: number;
+    movementMode?: "linear" | "orbital";
+    trail?: TrailPoint[];
+    /** Absolute timeline time represented by trail[0].t (set for Autozoom fragments). */
+    trailSourceStartTime?: number;
     enable3D?: boolean;
     perspective3DIntensity?: number;
     perspective3DAngleX?: number;
@@ -44,6 +151,32 @@ export function easeOutQuart(t: number): number {
 
 export function easeInOutQuart(t: number): number {
     return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
+}
+
+/**
+ * Numeric equivalent of `ZOOM_EASING`. Manual zooms use this curve through
+ * CSS, while orbital zooms are sampled per video frame. Keeping the function
+ * here makes their perceived entry speed and the exported result identical.
+ */
+export function easeZoomTransition(progress: number): number {
+    const x = Math.max(0, Math.min(1, progress));
+    if (x === 0 || x === 1) return x;
+
+    const cubic = (time: number, p1: number, p2: number) => {
+        const inverse = 1 - time;
+        return 3 * inverse * inverse * time * p1 + 3 * inverse * time * time * p2 + time * time * time;
+    };
+
+    // CSS easing is defined by x/y control points. Solve its x-coordinate to
+    // obtain the same y-coordinate that the browser uses for manual zooms.
+    let low = 0;
+    let high = 1;
+    for (let iteration = 0; iteration < 14; iteration += 1) {
+        const time = (low + high) / 2;
+        if (cubic(time, 0.4, 0.2) < x) low = time;
+        else high = time;
+    }
+    return cubic((low + high) / 2, 0, 1);
 }
 
 // Calculate 3-phase zoom state based on current time within fragment
@@ -87,30 +220,37 @@ export function calculateZoomPhaseState(
     const movementEndX = fragment.movementEndX ?? fragment.focusX;
     const movementEndY = fragment.movementEndY ?? fragment.focusY;
 
-    // Determine phase and calculate ZOOM values (independent of 3D)
+    // The backend trajectory drives the focus during every phase. Applying it
+    // only in hold caused an A → B-like jump at the end of the zoom entrance.
+    const isOrbital = isOrbitalZoomFragment(fragment);
+    const orbitalFocus = getOrbitalFocusAtTimelineTime(fragment, currentTime);
+    if (orbitalFocus) {
+        focusX = orbitalFocus.x;
+        focusY = orbitalFocus.y;
+        progress = normalizedTime;
+    }
+
     if (currentTime < entryEndTime && transitionSeconds > 0) {
-        // ENTRY PHASE: Zoom in
         phase = 'entry';
         const entryProgress = (currentTime - fragment.startTime) / transitionSeconds;
         progress = Math.max(0, Math.min(1, entryProgress));
-        const easedProgress = easeOutQuart(progress);
+        const easedProgress = easeZoomTransition(progress);
 
         if (forExport) {
             scale = 1 + (targetScale - 1) * easedProgress;
         }
 
     } else if (currentTime >= exitStartTime && transitionSeconds > 0) {
-        // EXIT PHASE: Zoom out
         phase = 'exit';
         const exitProgress = (currentTime - exitStartTime) / transitionSeconds;
         progress = Math.max(0, Math.min(1, exitProgress));
-        const easedProgress = easeOutQuart(progress);
+        const easedProgress = easeZoomTransition(progress);
 
         if (forExport) {
             scale = targetScale - (targetScale - 1) * easedProgress;
         }
 
-        if (fragment.movementEnabled) {
+        if (fragment.movementEnabled && !isOrbital) {
             focusX = movementEndX;
             focusY = movementEndY;
         }
@@ -122,7 +262,7 @@ export function calculateZoomPhaseState(
             scale = targetScale;
         }
 
-        if (fragment.movementEnabled && holdDuration > 0) {
+        if (!isOrbital && fragment.movementEnabled && holdDuration > 0) {
             const movementStartOffset = fragment.movementStartOffset ?? 0;
             const movementEndOffset = fragment.movementEndOffset ?? holdDuration;
 

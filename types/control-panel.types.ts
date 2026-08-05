@@ -7,6 +7,7 @@ import type { UploadedAudio, AudioTrack } from "./audio.types";
 import type { CameraConfig } from "./camera.types";
 import type { ImageProjectPreview } from "./image-project.types";
 import { MockupMotionFragment, MockupMotionPresetId } from "@/lib/mockup-motion";
+import type { AutozoomLibraryVideo } from "@/lib/autozoom-jobs-repo";
 
 export interface ControlPanelProps {
     activeTool: Tool;
@@ -68,7 +69,7 @@ export interface ControlPanelProps {
     // Cursor props
     isRecordedVideo?: boolean;
     // Videos library props
-    onAddVideoToTrack?: (videoId: string, blob: Blob, duration: number) => void;
+    onAddVideoToTrack?: (video: AutozoomLibraryVideo) => void | Promise<void>;
     onRemoveVideoFromTrack?: (videoId: string) => void;
     onVideoUploadToLibrary?: (file: File) => void;
     onVideoDeleteFromTrack?: (videoId: string) => void;
