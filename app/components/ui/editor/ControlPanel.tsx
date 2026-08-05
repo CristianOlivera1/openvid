@@ -330,11 +330,9 @@ export function ControlPanel({
                             onAddToTrack={onAddVideoToTrack}
                             onRemoveFromTrack={onRemoveVideoFromTrack}
                             onVideoUpload={onVideoUploadToLibrary}
-                            onVideoDeleteFromTrack={onVideoDeleteFromTrack}
                             videosInTrackIds={videosInTrackIds}
                             refreshTrigger={videosLibraryRefresh}
                             isUploading={isVideoUploading}
-                            onVideoAudioToggle={onVideoAudioToggle}
                             globalSpeed={globalSpeed}
                             onGlobalSpeedChange={onGlobalSpeedChange}
                         />
