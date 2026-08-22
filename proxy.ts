@@ -87,6 +87,6 @@ function forwardWithRefreshedRequest(
 
 export const config = {
   matcher: [
-    "/((?!api|ffmpeg|models|hdri|_next/static|_next/image|sitemap.xml|robots.txt|site.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|avif|webm|wasm|js|glb|gltf|webmanifest|json|ico)$).*)",
+    "/((?!api|ffmpeg|models|hdri|projector|_next/static|_next/image|sitemap.xml|robots.txt|site.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|avif|webm|wasm|js|glb|gltf|webmanifest|json|ico)$).*)",
   ],
 };

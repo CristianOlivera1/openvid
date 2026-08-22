@@ -7,8 +7,10 @@ let _plane: THREE.Mesh | null = null;
 let _material: THREE.MeshBasicMaterial | null = null;
 let _texture: THREE.Texture | null = null;
 let _lastAspect = 0;
+let _lastCanvasWidth = 0;
+let _lastCanvasHeight = 0;
 
-function buildRenderer(): THREE.WebGLRenderer {
+function buildRenderer(pixelRatio: number = window.devicePixelRatio || 1): THREE.WebGLRenderer {
   const r = new THREE.WebGLRenderer({
     alpha: true,
     antialias: true,
@@ -19,7 +21,7 @@ function buildRenderer(): THREE.WebGLRenderer {
   r.toneMapping = THREE.NoToneMapping;
   r.setClearColor(0x000000, 0);
 
-  r.setPixelRatio(1);
+  r.setPixelRatio(pixelRatio);
 
   return r;
 }
@@ -57,7 +59,7 @@ function ensureScene(aspect: number, renderer: THREE.WebGLRenderer): { scene: TH
     _material.premultipliedAlpha = false;
   }
 
-  if (!_plane || Math.abs(_lastAspect - aspect) > 0.0001) {
+  if (!_plane || Math.abs(_lastAspect - aspect) > 0.0001 || _lastCanvasWidth !== renderer.domElement.width || _lastCanvasHeight !== renderer.domElement.height) {
     if (_plane) {
       _plane.geometry.dispose();
       _scene.remove(_plane);
@@ -66,6 +68,8 @@ function ensureScene(aspect: number, renderer: THREE.WebGLRenderer): { scene: TH
     _plane = new THREE.Mesh(geo, _material);
     _scene.add(_plane);
     _lastAspect = aspect;
+    _lastCanvasWidth = renderer.domElement.width;
+    _lastCanvasHeight = renderer.domElement.height;
   }
 
   return { scene: _scene, plane: _plane };
@@ -84,9 +88,12 @@ export function applyPerspective3D(
   const h = canvas.height;
   if (w === 0 || h === 0) return;
   const aspect = w / h;
+  const pixelRatio = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
 
   if (!_renderer) {
-    _renderer = buildRenderer();
+    _renderer = buildRenderer(pixelRatio);
+  } else if (_renderer.getPixelRatio() !== pixelRatio) {
+    _renderer.setPixelRatio(pixelRatio);
   }
   if (_renderer.domElement.width !== w || _renderer.domElement.height !== h) {
     _renderer.setSize(w, h, false);
@@ -97,8 +104,8 @@ export function applyPerspective3D(
   _texture!.image = canvas;
   _texture!.needsUpdate = true;
 
-  const PERSPECTIVE_REFERENCE_HEIGHT = 1080;
-  const cameraZ = (2 * perspectivePx) / PERSPECTIVE_REFERENCE_HEIGHT;
+  const referenceHeight = h;
+  const cameraZ = (2 * perspectivePx) / referenceHeight;
   const fovDeg = (2 * Math.atan(1 / cameraZ) * 180) / Math.PI;
 
   if (!_camera) {
@@ -141,4 +148,6 @@ export function disposePerspective3D(): void {
   _material = null;
   _texture = null;
   _lastAspect = 0;
+  _lastCanvasWidth = 0;
+  _lastCanvasHeight = 0;
 }

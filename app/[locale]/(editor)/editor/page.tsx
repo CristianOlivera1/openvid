@@ -3099,6 +3099,7 @@ export default function Editor() {
                                         onDeleteMockupMotionFragment={handleDeleteMockupMotionFragment}
                                         selectedAudioTrackId={selectedAudioTrackId}
                                         setSelectedAudioTrackId={handleSelectAudioTrack}
+                                        canvasRef={canvasRef}
                                     />
                                 </Suspense>
                             </motion.div>

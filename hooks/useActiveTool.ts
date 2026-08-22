@@ -15,6 +15,7 @@ const VALID_TOOLS: ReadonlySet<Tool> = new Set<Tool>([
     "camera",
     "history",
     "motion",
+    "projector",
 ]);
 
 function parseTool(value: string | null): Tool {

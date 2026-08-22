@@ -6,7 +6,7 @@ import type { MockupConfig } from "./mockup.types";
 import type { CameraConfig } from "./camera.types";
 import { MockupMotionFragment } from "@/lib/mockup-motion";
 
-export type Tool = "screenshot" | "elements" | "audio" | "zoom" | "mockup" | "cursor" | "video" | "camera" | "history" | "motion";
+export type Tool = "screenshot" | "elements" | "audio" | "zoom" | "mockup" | "cursor" | "video" | "camera" | "history" | "motion" | "projector";
 export type BackgroundTab = "wallpaper" | "image" | "color";
 export type AspectRatio = "auto" | "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "custom";
 

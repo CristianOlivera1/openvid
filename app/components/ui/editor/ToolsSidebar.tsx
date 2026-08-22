@@ -320,6 +320,20 @@ export function ToolsSidebar({
                         }
                     />
 
+                    <SidebarTool
+                        icon="solar:projector-linear"
+                        label="Projector"
+                        isActive={activeTool === "projector"}
+                        onClick={() => onToolChange("projector")}
+                        popover={{
+                            title: "Projector Mapping",
+                            description: "Send canvas to projector display with corner-pin warp",
+                            videoSrc: "/videos/preview-menu/background.mp4"
+                        }}
+                        badge="NEW"
+                        badgeStyle="premium"
+                    />
+
                     {isPhotoMode && (
                         <SidebarTool
                             icon="material-symbols:history"

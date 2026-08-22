@@ -16,6 +16,7 @@ import { ElementsMenu } from "./ElementsMenu";
 import { TooltipAction } from "@/components/ui/tooltip-action";
 import { CameraMenu } from "./CameraMenu";
 import { useMockup3dContext } from "@/app/contexts/Mockup3dContext";
+import { ProjectorPanel } from "@/components/projection/ProjectorPanel";
 
 const BackgroundColorEditor = lazy(() => import("../BackgroundColorEditor").then(mod => ({ default: mod.BackgroundColorEditor })));
 const ZoomFragmentEditor = lazy(() => import("./ZoomFragmentEditor").then(mod => ({ default: mod.ZoomFragmentEditor })));
@@ -126,7 +127,8 @@ export function ControlPanel({
     onUpdateMockupMotionFragment,
     onSelectMockupMotionFragment,
     onDeleteMockupMotionFragment,
-}: ExtendedControlPanelProps) {
+    canvasRef,
+}: ExtendedControlPanelProps & { canvasRef?: React.RefObject<{ getExportCanvas: () => HTMLCanvasElement | null; getPreviewContainer: () => HTMLDivElement | null } | null> }) {
 
     const t = useTranslations("controlPanel");
     const { imagePhoneActive } = useMockup3dContext();
@@ -445,6 +447,19 @@ export function ControlPanel({
                             onUploadToHistory={onUploadImageToHistory || (() => { })}
                         />
                     </Suspense>
+                )}
+
+                {activeTool === "projector" && (
+                    <div className="p-4">
+                        <div className="flex items-center gap-2 text-foreground font-medium mb-4">
+                            <Icon icon="solar:projector-linear" width="20" />
+                            <span>Projector Mapping</span>
+                        </div>
+                        <ProjectorPanel
+                          canvasGetter={() => canvasRef?.current?.getExportCanvas() ?? null}
+                          previewGetter={() => canvasRef?.current?.getPreviewContainer() ?? null}
+                        />
+                    </div>
                 )}
             </div>
         </div>
