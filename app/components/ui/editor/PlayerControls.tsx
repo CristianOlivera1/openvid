@@ -96,8 +96,26 @@ export function PlayerControls({
             }
         };
 
+        const handleWheel = (e: WheelEvent) => {
+            if (!e.ctrlKey && !e.metaKey) return;
+
+            const target = e.target as HTMLElement | null;
+            if (target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                handleZoomIn();
+            } else if (e.deltaY > 0) {
+                handleZoomOut();
+            }
+        };
+
         window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
+        window.addEventListener("wheel", handleWheel, { passive: false });
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("wheel", handleWheel);
+        };
     }, [onTogglePlayPause, onSkipBackward, onSkipForward, onToggleFullscreen, handleZoomIn, handleZoomOut, onSplitClip, canSplitClip]);
 
     const fullscreenLabel = isFullscreen ? t("fullscreen.exit") : t("fullscreen.enter");
@@ -124,12 +142,12 @@ export function PlayerControls({
 
                 <div className="h-4 w-px bg-border" />
 
-                <div className="flex items-center gap-2" role="group" aria-label={t("zoom.group")}>
+                <div className="flex items-center gap-2" role="group" aria-label={t("zoom.group")} title={t("zoom.wheel")}>
                     <TooltipAction label={t("zoom.out")}>
                         <button
                             onClick={handleZoomOut}
                             disabled={zoomLevel <= MIN_ZOOM}
-                            className="text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="min-h-8 min-w-8 text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label={t("zoom.out")}
                         >
                             <Icon icon="mdi:magnify-minus-outline" width="16" aria-hidden="true" />
@@ -164,7 +182,7 @@ export function PlayerControls({
                         <button
                             onClick={handleZoomIn}
                             disabled={zoomLevel >= MAX_ZOOM}
-                            className="text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="min-h-8 min-w-8 text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label={t("zoom.in")}
                         >
                             <Icon icon="mdi:magnify-plus-outline" width="16" aria-hidden="true" />

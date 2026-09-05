@@ -1124,7 +1124,8 @@
       "group": "Timeline zoom",
       "out": "Zoom out (↓)",
       "in": "Zoom in (↑)",
-      "label": "Timeline zoom: {level}×"
+      "label": "Timeline zoom: {level}×",
+      "wheel": "Hold Ctrl or Cmd and use the mouse wheel to adjust zoom"
     },
     "split": {
       "clip": "Split clip"
