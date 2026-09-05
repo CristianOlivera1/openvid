@@ -99,8 +99,11 @@ export function PlayerControls({
         const handleWheel = (e: WheelEvent) => {
             if (!e.ctrlKey && !e.metaKey) return;
 
-            const target = e.target as HTMLElement | null;
-            if (target?.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+            const target = e.target instanceof Element ? e.target : null;
+            if (
+                (target instanceof HTMLElement && target.isContentEditable) ||
+                target?.closest("button, input, textarea, select")
+            ) return;
 
             e.preventDefault();
             if (e.deltaY < 0) {
