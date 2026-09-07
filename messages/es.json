@@ -1102,7 +1102,8 @@
       "group": "Zoom de la línea de tiempo",
       "out": "Alejar (↓)",
       "in": "Acercar (↑)",
-      "label": "Zoom: {level}×"
+      "label": "Zoom: {level}×",
+      "wheel": "Mantén Ctrl o Cmd y usa la rueda del mouse para ajustar el zoom"
     },
     "split": {
       "clip": "Dividir"
