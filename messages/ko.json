@@ -792,6 +792,25 @@
       "size": "크기",
       "font": "글꼴",
       "weight": "굵기",
+      "gradientStart": "시작 색상",
+      "gradientEnd": "끝 색상",
+      "fill": "채우기",
+      "color": "색상",
+      "useGradient": "그라데이션 사용",
+      "outline": "텍스트 테두리",
+      "toggleOutline": "텍스트 테두리 전환",
+      "outlineColor": "테두리",
+      "outlineEnd": "테두리 끝",
+      "outlineWidth": "테두리 두께",
+      "useOutlineGradient": "그라데이션 테두리",
+      "animation": {
+        "title": "텍스트 애니메이션",
+        "entry": "등장",
+        "exit": "퇴장",
+        "duration": "지속 시간",
+        "entryDuration": "등장 시간",
+        "exitDuration": "퇴장 시간"
+      },
       "addButton": "텍스트 추가"
     },
     "uploads": {

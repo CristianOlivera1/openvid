@@ -759,6 +759,25 @@
       "size": "Размер",
       "font": "Шрифт",
       "weight": "Толщина",
+      "gradientStart": "Начальный цвет",
+      "gradientEnd": "Конечный цвет",
+      "fill": "Заливка",
+      "color": "Цвет",
+      "useGradient": "Использовать градиент",
+      "outline": "Контур текста",
+      "toggleOutline": "Переключить контур текста",
+      "outlineColor": "Контур",
+      "outlineEnd": "Конец контура",
+      "outlineWidth": "Толщина контура",
+      "useOutlineGradient": "Градиентный контур",
+      "animation": {
+        "title": "Анимация текста",
+        "entry": "Вход",
+        "exit": "Выход",
+        "duration": "Длительность",
+        "entryDuration": "Длительность входа",
+        "exitDuration": "Длительность выхода"
+      },
       "addButton": "Добавить текст"
     },
     "uploads": {

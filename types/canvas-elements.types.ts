@@ -1,4 +1,6 @@
 export type CanvasElementType = "svg" | "image" | "text";
+export type TextAnimation = "none" | "fade" | "slide-up" | "slide-left" | "slide-right" | "scale" | "typewriter" | "blur" | "rotate" | "bounce" | "wipe" | "pop" | "elastic" | "zoom-blur" | "word-by-word";
+export type TextCase = "none" | "uppercase" | "lowercase";
 
 export interface CanvasElementBase {
   id: string;
@@ -33,10 +35,22 @@ export interface ImageElement extends CanvasElementBase {
 export interface TextElement extends CanvasElementBase {
     type: "text";
     content: string;
+    textCase?: TextCase;
     fontSize: number;
     fontFamily: string;
     fontWeight: "normal" | "medium" | "bold";
     color: string;
+    colorEnd?: string;
+    useGradient?: boolean;
+    strokeEnabled?: boolean;
+    strokeWidth?: number;
+    strokeColor?: string;
+    strokeColorEnd?: string;
+    strokeGradient?: boolean;
+    animationIn?: TextAnimation;
+    animationOut?: TextAnimation;
+    animationInDuration?: number;
+    animationOutDuration?: number;
 }
 
 export type CanvasElement = SvgElement | ImageElement | TextElement;
@@ -75,8 +89,6 @@ export interface ElementsMenuProps {
     onSendToBack?: (id: string) => void;
 }
 
-export const PRESET_COLORS = ["#FFFFFF", "#000000", "#FF0000", "#00FF00", "#0000FF"];
-
 export const TEXT_PRESETS = [
     { label: "Título", fontSize: 48, weight: "bold", sample: "Título" },
     { label: "Subtítulo", fontSize: 32, weight: "medium", sample: "Subtítulo" },
@@ -84,7 +96,10 @@ export const TEXT_PRESETS = [
     { label: "Caption", fontSize: 18, weight: "normal", sample: "Caption" },
 ] as const;
 
-export const FONT_FAMILIES = ["Inter", "Roboto", "Arial", "Georgia", "Courier New", "Comic Sans MS"];
+export const FONT_FAMILIES = [
+    "Inter", "Roboto", "Arial", "Helvetica Neue", "Georgia", "Times New Roman",
+    "Courier New", "IBM Plex Mono", "Verdana",
+];
 
 export const FONT_WEIGHTS = [
     { key: "normal", label: "Regular" },

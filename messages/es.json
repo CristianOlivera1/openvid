@@ -748,6 +748,25 @@
       "size": "Tamaño",
       "font": "Fuente",
       "weight": "Peso",
+      "gradientStart": "Color inicial",
+      "gradientEnd": "Color final",
+      "fill": "Relleno",
+      "color": "Color",
+      "useGradient": "Usar degradado",
+      "outline": "Borde del texto",
+      "toggleOutline": "Activar borde del texto",
+      "outlineColor": "Borde",
+      "outlineEnd": "Borde final",
+      "outlineWidth": "Grosor del borde",
+      "useOutlineGradient": "Borde degradado",
+      "animation": {
+        "title": "Animación del texto",
+        "entry": "Entrada",
+        "exit": "Salida",
+        "duration": "Duración",
+        "entryDuration": "Duración de entrada",
+        "exitDuration": "Duración de salida"
+      },
       "addButton": "Agregar texto"
     },
     "uploads": {
