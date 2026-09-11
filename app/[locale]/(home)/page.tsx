@@ -15,7 +15,7 @@ import FAQ from "@/app/components/ui/home/FAQ";
 import { buildPageMetadata } from "@/lib/seo";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import HeroEditorPreview from "@/app/components/ui/home/HeroEditorPreview";
-import { generateFAQSchema } from "@/app/components/seo/StructuredData";
+import { generateFAQSchema, generateVideoObjectSchema } from "@/app/components/seo/StructuredData";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -111,6 +111,7 @@ export default async function Home({ params }: Props) {
       <StructuredData data={generateWebAppSchema(schemaLocale)} />
       <StructuredData data={generateWebSiteSchema(schemaLocale)} />
       <StructuredData data={generateOrganizationSchema()} />
+      <StructuredData data={generateVideoObjectSchema(locale)} />
       <StructuredData data={faqSchema} />
 
       <div className="flex flex-col">

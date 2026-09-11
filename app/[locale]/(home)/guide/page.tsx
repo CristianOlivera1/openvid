@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Metadata } from "next";
 import InteractiveRecordingSteps from "@/app/components/ui/home/RecordingSteps";
+import { StructuredData, generateHowToSchema } from "@/app/components/seo/StructuredData";
 import { buildPageMetadata } from "@/lib/seo";
 
 type Props = {
@@ -22,10 +23,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function GuidePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: "recording.steps" });
+  const howToSchema = generateHowToSchema(locale, (k) => t(k));
 
   return (
-    <div className="min-h-screen bg-black pt-12 pb-24">
-      <InteractiveRecordingSteps />
-    </div>
+    <>
+      <StructuredData data={howToSchema} />
+      <div className="min-h-screen bg-black pt-12 pb-24">
+        <InteractiveRecordingSteps />
+      </div>
+    </>
   );
 }
