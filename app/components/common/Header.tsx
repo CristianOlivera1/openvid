@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { Icon } from "@iconify/react";
 import { getIsMobileSnapshot } from "@/lib/layers.utils";
 import { Button } from "@/components/ui/button";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useRecording } from "@/app/contexts/RecordingContext";
 import RecordingSetupDialog from "../ui/RecordingSetupDialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -140,7 +141,33 @@ export default function Header() {
             <Image src="/svg/openvid.svg" alt="Openvid" width={100} height={50} className="hidden sm:flex" style={{ height: "auto" }} />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-md font-medium text-neutral-400" aria-label="Main navigation">
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8 text-md font-medium text-neutral-400" aria-label="Main navigation">
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger className="group flex items-center gap-1.5 hover:text-white transition-colors outline-none data-[state=open]:text-white">
+                {t("product")}
+                <Icon icon="solar:alt-arrow-down-linear" width="14" className="transition-transform duration-200 group-data-[state=open]:rotate-180" aria-hidden="true" />
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  className="min-w-52 bg-[#0a0a0a] border border-white/10 squircle-element shadow-xl p-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+                  sideOffset={8}
+                  align="start"
+                >
+                  <DropdownMenu.Item asChild className="flex items-center gap-3 px-3 py-2.5 text-sm squircle-element cursor-pointer outline-none transition-colors text-white/70 hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white">
+                    <Link href="/video-editor" className="flex items-center gap-3 w-full">
+                      <Icon icon="mdi:movie-edit-outline" width="18" className="text-neutral-400" aria-hidden="true" />
+                      <span>{t("videoEditor")}</span>
+                    </Link>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item asChild className="flex items-center gap-3 px-3 py-2.5 text-sm squircle-element cursor-pointer outline-none transition-colors text-white/70 hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white">
+                    <Link href="/screen-recorder" className="flex items-center gap-3 w-full">
+                      <Icon icon="mdi:record-circle-outline" width="18" className="text-neutral-400" aria-hidden="true" />
+                      <span>{t("screenRecorder")}</span>
+                    </Link>
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
             <Link href="/guide" target="_blank" className="hover:text-white transition-colors">
               {t("guide")}
             </Link>

@@ -31,6 +31,8 @@ export default function Footer() {
           <nav aria-label={t('product')}>
             <h4 className="text-white font-medium text-sm mb-4">{t('product')}</h4>
             <ul className="space-y-3 text-sm text-neutral-500">
+              <li><Link href="/video-editor" className="hover:text-white transition-colors">{t('videoEditor')}</Link></li>
+              <li><Link href="/screen-recorder" className="hover:text-white transition-colors">{t('screenRecorder')}</Link></li>
               <li><Link href="/guide" target="_blank" className="hover:text-white transition-colors">{t('guide')}</Link></li>
               <li><Link href="/editor" className="hover:text-white transition-colors">{t('editor')}</Link></li>
               <li><Link href="/donate" target="_blank" className="hover:text-white transition-colors">{t('donate')}</Link></li>

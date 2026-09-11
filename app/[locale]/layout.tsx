@@ -5,7 +5,9 @@ import { defaultLocale, locales, type Locale } from "@/i18n";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Inter, Roboto } from "next/font/google";
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { SuppressScriptWarning } from "@/app/components/common/SuppressScriptWarning";
 import {
   buildPageMetadata,
   getOgLocales,
@@ -184,11 +186,16 @@ export default async function LocaleLayout({
   return (
     <html lang={locale || defaultLocale} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INLINE_SCRIPT }} />
+        <Script
+          id="openvid-theme"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: THEME_INLINE_SCRIPT }}
+        />
       </head>
       <body
         className={`${inter.variable} ${roboto.variable} ${inter.className} antialiased`}
       >
+        <SuppressScriptWarning />
         <NextIntlClientProvider
           key={locale}
           messages={publicMessages}
@@ -196,8 +203,8 @@ export default async function LocaleLayout({
         >
           <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
         </NextIntlClientProvider>
+        {isProduction && gaId ? <GoogleAnalytics gaId={gaId} /> : null}
       </body>
-      {isProduction && gaId ? <GoogleAnalytics gaId={gaId} /> : null}
     </html>
   );
 }
