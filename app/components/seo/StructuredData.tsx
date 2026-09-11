@@ -114,19 +114,6 @@ export function StructuredData({ data }: StructuredDataProps) {
   );
 }
 
-export function generateFAQSchema(locale: string, items: FAQItem[]): FAQPageSchema {
-  return {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    inLanguage: locale,
-    mainEntity: items.map((f) => ({
-      "@type": "Question",
-      name: f.q,
-      acceptedAnswer: { "@type": "Answer", text: f.a },
-    })),
-  };
-}
-
 export function generateVideoObjectSchema(locale: string): VideoObjectSchema {
   const content: Record<string, { name: string; description: string }> = {
     es: {

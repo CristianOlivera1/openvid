@@ -186,12 +186,60 @@ export default async function VideoEditorPage({ params }: Props) {
         <FAQ items={faqItems} eyebrow={t("faqEyebrow")} title1={t("faqTitle1")} title2={t("faqTitle2")} subtitle={t("faqSubtitle")} />
 
         <section className="max-w-7xl mx-auto px-6 pb-20">
-          <div className="squircle-element-2xl bg-gradient-to-br from-cyan-500/20 via-blue-600/20 to-fuchsia-500/20 border border-white/10 p-8 sm:p-12 text-center">
-            <h2 className="text-3xl font-semibold text-white mb-3">{t("ctaTitle")}</h2>
-            <p className="text-neutral-400 mb-6">{t("ctaSubtitle")}</p>
-            <Button asChild size="lg" className="rounded-full bg-white text-black hover:bg-neutral-100">
-              <Link href={`/${locale}/editor`}>{t("ctaButton")}</Link>
-            </Button>
+          <div className="squircle-element-2xl relative overflow-hidden bg-[#100e0b]/60 border border-white/10 p-8 sm:p-12 text-center">
+
+            <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" style={{ willChange: 'transform' }} aria-hidden="true">
+
+              <div
+                className="absolute -top-[40%] left-[10%] w-[130%] h-[150%] rounded-full blur-[70px] md:blur-[100px] opacity-65"
+                style={{
+                  background: 'radial-gradient(circle at center, rgba(247, 164, 66, 0.9) 0%, rgba(247, 115, 22, 0.5) 50%, transparent 100%)',
+                  mixBlendMode: 'hard-light'
+                }}
+              />
+
+              <div
+                className="absolute -bottom-[30%] -right-[20%] w-[100%] h-[130%] rounded-full blur-[60px] md:blur-[80px] opacity-35"
+                style={{
+                  background: 'radial-gradient(circle at center, rgba(0, 138, 255, 0.7) 0%, rgba(233, 66, 247, 0.5) 60%, transparent 100%)',
+                  mixBlendMode: 'soft-light'
+                }}
+              />
+
+              <div
+                className="absolute top-[10%] left-[30%] w-[50%] h-[50%] rounded-full blur-[50px] opacity-20"
+                style={{
+                  background: 'radial-gradient(circle at center, rgb(255, 255, 255) 0%, transparent 70%)',
+                  mixBlendMode: 'overlay'
+                }}
+              />
+
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: 'linear-gradient(to top, rgba(16, 14, 11, 0.85) 0%, transparent 80%)',
+                  mixBlendMode: 'normal'
+                }}
+              />
+            </div>
+
+            <div className="relative z-10">
+              <h2 className="text-3xl font-semibold text-white tracking-tight mb-3">
+                {t("ctaTitle")}
+              </h2>
+              <p className="text-neutral-400 mb-6">
+                {t("ctaSubtitle")}
+              </p>
+              <Button
+                asChild
+                size="lg"
+                className="rounded-full bg-white text-black hover:bg-neutral-100"
+              >
+                <Link href={`/${locale}/editor`}>
+                  {t("ctaButton")}
+                </Link>
+              </Button>
+            </div>
           </div>
         </section>
       </div>
