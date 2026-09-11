@@ -11,9 +11,11 @@ import BannerCTA from "@/app/components/ui/home/BannerCTA";
 import FeaturesGrid from "@/app/components/ui/home/Featuresgrid";
 import FeaturesShowcase from "@/app/components/ui/home/FeaturesShowcase";
 import SocialReactions from "@/app/components/ui/home/SocialReactions";
+import FAQ from "@/app/components/ui/home/FAQ";
 import { buildPageMetadata } from "@/lib/seo";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import HeroEditorPreview from "@/app/components/ui/home/HeroEditorPreview";
+import { generateFAQSchema, generateVideoObjectSchema } from "@/app/components/seo/StructuredData";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -100,12 +102,17 @@ export default async function Home({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const schemaLocale = (locale in HOME_COPY ? locale : "en") as HomeLocale;
+  const tFaq = await getTranslations({ locale, namespace: "faq" });
+  const faqItems = tFaq.raw("items") as { q: string; a: string }[];
+  const faqSchema = generateFAQSchema(locale, faqItems);
 
   return (
     <>
       <StructuredData data={generateWebAppSchema(schemaLocale)} />
       <StructuredData data={generateWebSiteSchema(schemaLocale)} />
       <StructuredData data={generateOrganizationSchema()} />
+      <StructuredData data={generateVideoObjectSchema(locale)} />
+      <StructuredData data={faqSchema} />
 
       <div className="flex flex-col">
         <div className="relative overflow-hidden bg-gradient-radial-primary w-full">
@@ -132,6 +139,8 @@ export default async function Home({ params }: Props) {
             <div id="reactions" className="w-full">
               <SocialReactions />
             </div>
+
+            <FAQ />
 
             <div className="max-w-xl mx-auto px-6 pt-24 pb-50">
               <DonationCard />

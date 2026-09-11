@@ -5,7 +5,9 @@ import { defaultLocale, locales, type Locale } from "@/i18n";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Inter, Roboto } from "next/font/google";
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { SuppressScriptWarning } from "@/app/components/SuppressScriptWarning";
 import {
   buildPageMetadata,
   getOgLocales,
@@ -16,12 +18,6 @@ import {
 } from "@/lib/seo";
 import "../globals.css";
 
-// Script inline anti-FOUC: aplica el tema sobre <html> antes del primer paint.
-// Lee la preferencia cruda (openvid_theme_pref) y el tema efectivo
-// (openvid_theme); para "system" (o sin cookie) resuelve con
-// prefers-color-scheme. Así el primer paint coincide con el tema guardado,
-// incluso si la cookie efectiva quedó desactualizada tras un cambio de
-// preferencia del OS en modo system.
 const THEME_INLINE_SCRIPT = `
 (function () {
   try {
@@ -37,6 +33,21 @@ const THEME_INLINE_SCRIPT = `
   } catch (e) {}
 })();
 `;
+
+async function getThemeClass(): Promise<string> {
+  try {
+    const cookieStore = await cookies();
+    const pref =
+      cookieStore.get("openvid_theme_pref")?.value ||
+      cookieStore.get("openvid_theme")?.value ||
+      "system";
+    if (pref === "dark") return "dark";
+    if (pref === "light") return "light";
+    return "";
+  } catch {
+    return "";
+  }
+}
 
 const inter = Inter({
   subsets: ["latin"],
@@ -180,15 +191,18 @@ export default async function LocaleLayout({
     donation: messages.donation,
     notFound: messages.notFound,
     tour: messages.tour,
-    heroPreview: messages.heroPreview
+    heroPreview: messages.heroPreview,
+    faq: messages.faq
   };
 
   const isProduction = process.env.NODE_ENV === "production";
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
+  const themeClass = await getThemeClass();
 
   return (
-    <html lang={locale || defaultLocale} suppressHydrationWarning>
+    <html lang={locale || defaultLocale} suppressHydrationWarning className={themeClass}>
       <head>
+        <SuppressScriptWarning />
         <script dangerouslySetInnerHTML={{ __html: THEME_INLINE_SCRIPT }} />
       </head>
       <body

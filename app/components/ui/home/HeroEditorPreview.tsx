@@ -5,7 +5,7 @@ import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { calculateSmoothZoom } from "@/lib/canvas.utils";
-import { zoomLevelToFactor, type ZoomFragment } from "@/types/zoom.types";
+import { zoomLevelToFactor, type ZoomFragment, type ZoomMovement } from "@/types/zoom.types";
 import { formatTime } from "@/lib";
 import {
   ACCENT,
@@ -27,6 +27,7 @@ import {
   ZOOM_FRAGMENT_DURATIONS,
   clamp,
   getInitialZoomFragments,
+  getInitialZoomMovements,
   hashSeed,
   organicDrift,
 } from "@/lib/editor-preview-hero.utils";
@@ -506,6 +507,7 @@ export default function HeroEditorPreview() {
 
   const [clipRange, setClipRange] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
   const [fragments, setFragments] = useState<ZoomFragment[]>([]);
+  const [zoomMovements, setZoomMovements] = useState<ZoomMovement[]>([]);
 
   const [blurPercent, setBlurPercent] = useState(0);
   const [paddingPercent, setPaddingPercent] = useState(0);
@@ -578,12 +580,22 @@ export default function HeroEditorPreview() {
 
     setClipRange({ start: 0, end: Math.max(CLIP_MIN_DURATION, duration) });
 
-    setFragments(getInitialZoomFragments(duration, ZOOM_FRAGMENT_DURATIONS));
+    const initialFragments = getInitialZoomFragments(duration, ZOOM_FRAGMENT_DURATIONS);
+    setFragments(initialFragments);
+    setZoomMovements(getInitialZoomMovements(initialFragments));
   }, [duration]);
 
   const handleFragmentChange = useCallback((id: string, next: { start: number; end: number }) => {
     setFragments((prev) => prev.map((f) => (f.id === id ? { ...f, startTime: next.start, endTime: next.end } : f)));
-  }, []);
+    if (id === "zMid") {
+      setZoomMovements((prev) => {
+        const deltaStart = next.start - (fragments.find((f) => f.id === id)?.startTime ?? next.start);
+        return prev.map((m) =>
+          m.zoomFragmentId === id ? { ...m, startTime: m.startTime + deltaStart, endTime: m.endTime + deltaStart } : m
+        );
+      });
+    }
+  }, [fragments]);
 
   useEffect(() => {
     if (HERO_WALLPAPERS.length === 0) return;
@@ -635,7 +647,7 @@ export default function HeroEditorPreview() {
     setCurrentTime(clamped);
   }, []);
 
-  const smoothZoom = useMemo(() => calculateSmoothZoom(currentTime, fragments), [currentTime, fragments]);
+  const smoothZoom = useMemo(() => calculateSmoothZoom(currentTime, fragments, zoomMovements), [currentTime, fragments, zoomMovements]);
 
   const activeFragment = useMemo(
     () => fragments.find((f) => currentTime >= f.startTime && currentTime <= f.endTime) ?? null,
