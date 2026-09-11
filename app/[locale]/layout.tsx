@@ -5,9 +5,7 @@ import { defaultLocale, locales, type Locale } from "@/i18n";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Inter, Roboto } from "next/font/google";
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import { SuppressScriptWarning } from "@/app/components/SuppressScriptWarning";
 import {
   buildPageMetadata,
   getOgLocales,
@@ -33,21 +31,6 @@ const THEME_INLINE_SCRIPT = `
   } catch (e) {}
 })();
 `;
-
-async function getThemeClass(): Promise<string> {
-  try {
-    const cookieStore = await cookies();
-    const pref =
-      cookieStore.get("openvid_theme_pref")?.value ||
-      cookieStore.get("openvid_theme")?.value ||
-      "system";
-    if (pref === "dark") return "dark";
-    if (pref === "light") return "light";
-    return "";
-  } catch {
-    return "";
-  }
-}
 
 const inter = Inter({
   subsets: ["latin"],
@@ -197,12 +180,10 @@ export default async function LocaleLayout({
 
   const isProduction = process.env.NODE_ENV === "production";
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
-  const themeClass = await getThemeClass();
 
   return (
-    <html lang={locale || defaultLocale} suppressHydrationWarning className={themeClass}>
+    <html lang={locale || defaultLocale} suppressHydrationWarning>
       <head>
-        <SuppressScriptWarning />
         <script dangerouslySetInnerHTML={{ __html: THEME_INLINE_SCRIPT }} />
       </head>
       <body

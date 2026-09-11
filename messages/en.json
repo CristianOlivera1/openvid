@@ -1554,6 +1554,64 @@
       }
     ]
   },
+  "videoEditor": {
+    "heroEyebrow": "Online video editor",
+    "heroTitle1": "Video editor",
+    "heroTitle2": "without watermark",
+    "heroSubtitle": "Create demos, tutorials and social videos with cinematic zooms, 3D mockups and multi-track timeline. Free, no install and export in HD.",
+    "ctaPrimary": "Open free editor",
+    "ctaSecondary": "See how it works",
+    "comparisonTitle": "Why Openvid over other editors?",
+    "comparisonSubtitle": "Compared to CapCut, Clipchamp and Premiere — optimized for demos and screen recording.",
+    "featuresTitle": "Everything you need",
+    "howItWorksTitle": "How it works in 3 steps",
+    "features": [
+      { "title": "Cinematic zooms", "desc": "Follows cursor and focuses. Speed and focus adjustable automatically with AI." },
+      { "title": "3D Mockups", "desc": "Wrap your video in MacBook, iPhone or iPad in one click." },
+      { "title": "Multi-track timeline", "desc": "Multiple videos, audios and zooms on one canvas. Trim and sync layers easily with real-time preview." }
+    ],
+    "steps": [
+      { "t": "Upload or record", "d": "Drag your MP4/WebM or record screen with audio and camera directly in the browser.", "tag": "Input" },
+      { "t": "Edit with zooms", "d": "Add AI cinematic zooms, 3D mockups and adjust your timeline precisely.", "tag": "Processing" },
+      { "t": "Export in HD", "d": "Choose 16:9, 9:16 or 1:1 format and download as MP4/GIF without watermarks.", "tag": "Output" }
+    ],
+    "faqEyebrow": "Editor FAQ",
+    "faqTitle1": "Questions about the",
+    "faqTitle2": "video editor",
+    "faqSubtitle": "Quick answers to start editing without watermark.",
+    "ctaTitle": "Start editing now",
+    "ctaSubtitle": "Free, no watermark and nothing to install.",
+    "ctaButton": "Open video editor",
+    "faqItems": [
+      { "q": "Is it free without watermark?", "a": "Yes. Export in HD without watermark and no card. Free for your first projects." },
+      { "q": "Do I need to install anything?", "a": "No. Works in the browser (Chrome, Edge, Firefox) on Windows, Mac and Linux." },
+      { "q": "What formats does it export?", "a": "MP4 H.264 up to 4K, WebM with transparency and GIF. Choose 16:9, 9:16 or 1:1." },
+      { "q": "Are my videos private?", "a": "Yes. Everything is processed locally with WebAssembly. Your videos are not uploaded to servers." }
+    ]
+  },
+  "screenRecorder": {
+    "heroEyebrow": "Screen recorder online",
+    "heroTitle1": "Record screen",
+    "heroTitle2": "in one click",
+    "heroSubtitle": "Capture screen, camera and audio without installing anything. When you stop, your video goes straight to the recording editor to apply zooms, mockups and export in HD.",
+    "ctaPrimary": "Record screen free",
+    "ctaSecondary": "See guide",
+    "features": [
+      { "title": "Sharp capture up to 4K", "desc": "Record your screen in crystal clear resolution at 60fps. No watermarks and no performance loss." },
+      { "title": "Bubble camera", "desc": "Add your webcam as circle or squircle, customizable size and floating position." },
+      { "title": "Full audio & direct integration", "desc": "Capture microphone and system audio separately. Go directly to the video editor without intermediate exports." }
+    ],
+    "stepsTitle": "How it works in 3 steps",
+    "stepsSubtitle": "Record your screen and go straight to editing without wasting time.",
+    "steps": [
+      { "n": "01", "t": "Choose what to record", "d": "Select tab, window or entire screen. Enable system audio as needed.", "tag": "Input" },
+      { "n": "02", "t": "Record with camera", "d": "Draggable bubble, corner adjustment and mirror mode with 3-second countdown.", "tag": "Recording" },
+      { "n": "03", "t": "Edit instantly", "d": "When you stop recording, your video opens in the editor to apply zooms, 3D mockups and export.", "tag": "Output" }
+    ],
+    "ctaTitle": "Ready to start recording?",
+    "ctaSubtitle": "Free, no watermark and nothing to install. Your first recording in 30 seconds.",
+    "ctaButton": "Record screen now"
+  },
   "exportSuccess": {
     "title": "Export completed!",
     "photoSuccess": "Your image was exported successfully.",

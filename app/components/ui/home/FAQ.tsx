@@ -4,9 +4,17 @@ import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
 
-export default function FAQ() {
+type FAQProps = {
+  items?: { q: string; a: string }[];
+  eyebrow?: string;
+  title1?: string;
+  title2?: string;
+  subtitle?: string;
+};
+
+export default function FAQ({ items: propItems, eyebrow, title1, title2, subtitle }: FAQProps) {
   const t = useTranslations("faq");
-  const items = t.raw("items") as { q: string; a: string }[];
+  const items = propItems ?? (t.raw("items") as { q: string; a: string }[]);
   const [open, setOpen] = useState<number | null>(0);
 
   return (
@@ -18,20 +26,20 @@ export default function FAQ() {
       <div className="max-w-3xl mx-auto px-6">
         <div className="mb-12 sm:mb-16">
           <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-white/40 mb-4">
-            {t("eyebrow")}
+            {eyebrow ?? t("eyebrow")}
           </p>
           <h2
             id="faq-heading"
             className="text-4xl sm:text-5xl font-semibold tracking-tight text-white leading-[1.05] mb-4"
           >
-            {t("title1")}
+            {title1 ?? t("title1")}
             <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-neutral-300 to-neutral-600">
-              {t("title2")}
+              {title2 ?? t("title2")}
             </span>
           </h2>
           <p className="text-[15px] leading-relaxed text-neutral-400 max-w-xl font-light">
-            {t("subtitle")}
+            {subtitle ?? t("subtitle")}
           </p>
         </div>
 

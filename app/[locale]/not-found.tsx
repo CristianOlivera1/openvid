@@ -12,7 +12,7 @@ export default function NotFound() {
   
   return (
     <AuthProvider>
-      <Header />
+        <Header />
 
       <div className="flex flex-col items-center justify-center min-h-dvh bg-[#050505] text-center px-6 relative overflow-hidden dark">
 
