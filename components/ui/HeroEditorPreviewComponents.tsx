@@ -211,11 +211,13 @@ export const TimelineZoomContent = memo(function TimelineZoomContent({
   duration,
   isSelected,
   zoomLabel,
+  hasMovement,
 }: {
   zoomLevel: number;
   duration: number;
   isSelected?: boolean;
   zoomLabel: string;
+  hasMovement?: boolean;
 }) {
   return (
     <div
@@ -284,6 +286,7 @@ export const ZoomFragmentRangeItem = memo(function ZoomFragmentRangeItem({
         duration={fragment.endTime - fragment.startTime}
         isSelected={isSelected}
         zoomLabel={zoomLabel}
+        hasMovement={!!fragment.movementEnabled}
       />
     </DraggableRange>
   );
