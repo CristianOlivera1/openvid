@@ -63,8 +63,21 @@ type BreadcrumbSchema = {
   }>;
 };
 
+type FAQItem = { q: string; a: string };
+
+type FAQPageSchema = {
+  "@context": "https://schema.org";
+  "@type": "FAQPage";
+  inLanguage?: string;
+  mainEntity: Array<{
+    "@type": "Question";
+    name: string;
+    acceptedAnswer: { "@type": "Answer"; text: string };
+  }>;
+};
+
 type StructuredDataProps = {
-  data: WebApplicationSchema | OrganizationSchema | WebSiteSchema | BreadcrumbSchema | Record<string, unknown>;
+  data: WebApplicationSchema | OrganizationSchema | WebSiteSchema | BreadcrumbSchema | FAQPageSchema | Record<string, unknown>;
 };
 
 export function StructuredData({ data }: StructuredDataProps) {
@@ -73,8 +86,22 @@ export function StructuredData({ data }: StructuredDataProps) {
       id={`structured-data-${data['@type']}`}
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      suppressHydrationWarning
     />
   );
+}
+
+export function generateFAQSchema(locale: string, items: FAQItem[]): FAQPageSchema {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    inLanguage: locale,
+    mainEntity: items.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
 }
 
 export function generateWebAppSchema(locale: 'es' | 'en' | 'ru' | 'ko'): WebApplicationSchema {

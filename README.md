@@ -11,7 +11,7 @@
      />
      <img
        width="50%"
-       alt="openvid Hero"
+       alt="openvid"
        src="https://openvid.dev/images/pages/openvid-animation-light.svg"
      />
    </picture>

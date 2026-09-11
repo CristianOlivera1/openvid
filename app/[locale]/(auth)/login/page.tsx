@@ -229,7 +229,7 @@ export default function Login() {
               <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-white/10 to-transparent z-10 pointer-events-none" />
               <Image
                 src="/images/pages/openvid-login.avif"
-                alt="OpenVid Editor Preview"
+                alt="Openvid Editor Preview"
                 fill
                 priority
                 className="object-cover"

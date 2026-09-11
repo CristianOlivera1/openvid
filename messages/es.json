@@ -1490,6 +1490,48 @@
       "auto": "Auto"
     }
   },
+  "faq": {
+    "eyebrow": "Preguntas frecuentes",
+    "title1": "Todo lo que necesitas",
+    "title2": "saber sobre el editor",
+    "subtitle": "Resolvemos las dudas más comunes sobre nuestro editor de video online, screen recorder y recording editor.",
+    "contact": "¿Te queda alguna duda?",
+    "contactLink": "Escríbenos",
+    "items": [
+      {
+        "q": "¿Qué es Openvid ?",
+        "a": "Openvid  es un editor de video online gratuito que funciona directo en el navegador. Está pensado para crear demos profesionales, tutoriales y videos para redes sin instalar nada. Incluye screen recorder, zooms cinemáticos automáticos, mockups 3D y exportación en HD."
+      },
+      {
+        "q": "¿Es realmente gratis y sin marca de agua?",
+        "a": "Sí. Puedes usar el editor de video gratis sin registro y exportar sin marca de agua. No hay límite oculto en tus primeros proyectos y no necesitas tarjeta."
+      },
+      {
+        "q": "¿Cómo funciona el screen recorder y el recording editor?",
+        "a": "El screen recorder graba pantalla, cámara y audio en un clic. Al terminar, el recording editor abre automáticamente tu grabación en el timeline: puedes recortar, añadir zooms con IA, desenfoques y mockups, y exportar. Es ideal para demos de producto y tutoriales."
+      },
+      {
+        "q": "¿Necesito descargar o instalar algo?",
+        "a": "No. Es un editor de video online que corre en el navegador (Chrome, Edge, Firefox). Subes tu video o grabas pantalla, editas y descargas el resultado. Nada que instalar y funciona en Windows, Mac y Linux."
+      },
+      {
+        "q": "¿Qué son los zooms cinemáticos y los mockups 3D?",
+        "a": "Los zooms cinemáticos siguen automáticamente el cursor y enfocan lo importante de tu grabación con un movimiento suave y profesional. Los mockups 3D envuelven tu video en dispositivos realistas (MacBook, iPhone) para presentaciones y portfolios sin necesidad de After Effects."
+      },
+      {
+        "q": "¿En qué formatos y calidad puedo exportar?",
+        "a": "Exportas en MP4 (H.264) en alta calidad, hasta 4K según tu grabación original. Eliges relación de aspecto (16:9, 9:16, 1:1) y mantienes la nitidez del texto y la interfaz, perfecto para YouTube, TikTok o tu landing."
+      },
+      {
+        "q": "¿Mis videos son privados y seguros?",
+        "a": "Sí. Tus videos se procesan localmente en tu navegador siempre que es posible. No los usamos para entrenar modelos ni los compartimos. Puedes borrar tus proyectos cuando quieras."
+      },
+      {
+        "q": "¿En qué se diferencia de otros editores de video?",
+        "a": "A diferencia de editores genéricos, Openvid  está optimizado para screen recording y demos: timeline multi-pista simple, zooms y seguimientos automáticos, y mockups en un clic. Es más rápido que Premiere o CapCut para este caso de uso y sin marca de agua."
+      }
+    ]
+  },
   "exportSuccess": {
     "title": "¡Exportación completada!",
     "photoSuccess": "Tu imagen se exportó correctamente.",
