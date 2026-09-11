@@ -114,35 +114,22 @@ export function StructuredData({ data }: StructuredDataProps) {
   );
 }
 
-export function generateFAQSchema(locale: string, items: FAQItem[]): FAQPageSchema {
-  return {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    inLanguage: locale,
-    mainEntity: items.map((f) => ({
-      "@type": "Question",
-      name: f.q,
-      acceptedAnswer: { "@type": "Answer", text: f.a },
-    })),
-  };
-}
-
 export function generateVideoObjectSchema(locale: string): VideoObjectSchema {
   const content: Record<string, { name: string; description: string }> = {
     es: {
-      name: "OpenVid — Editor de video online con zooms cinemáticos",
+      name: "Openvid  — Editor de video online con zooms cinemáticos",
       description: "Demo del editor de video online gratuito: screen recorder, zooms cinemáticos, mockups 3D y exportación HD sin marca de agua.",
     },
     en: {
-      name: "OpenVid — Online video editor with cinematic zooms",
+      name: "Openvid  — Online video editor with cinematic zooms",
       description: "Demo of the free online video editor: screen recorder, cinematic zooms, 3D mockups and HD export without watermark.",
     },
     ru: {
-      name: "OpenVid — Онлайн-редактор с кинематографическими зумами",
+      name: "Openvid  — Онлайн-редактор с кинематографическими зумами",
       description: "Демо бесплатного онлайн-редактора: запись экрана, кинематографические зумы, 3D-мокапы и HD-экспорт без водяных знаков.",
     },
     ko: {
-      name: "OpenVid — 시네마틱 줌 온라인 비디오 에디터",
+      name: "Openvid  — 시네마틱 줌 온라인 비디오 에디터",
       description: "무료 온라인 비디오 에디터 데모: 화면 녹화, 시네마틱 줌, 3D 목업, 워터마크 없는 HD 내보내기.",
     },
   };
@@ -163,19 +150,40 @@ export function generateVideoObjectSchema(locale: string): VideoObjectSchema {
 
 export function generateHowToSchema(
   locale: string,
-  t: (key: string) => string
+  t: {
+    (key: string, values?: Record<string, unknown>): string;
+    raw: (key: string) => unknown;
+  }
 ): HowToSchema {
+  const getPlain = (key: string): string => {
+    try {
+      const raw = t.raw(key);
+      if (typeof raw === "string") return raw.replace(/<[^>]*>/g, "");
+    } catch {}
+    try {
+      // Rich text keys need dummy tag handlers
+      return t(key, {
+        tab: (chunks: unknown) => String(chunks ?? ""),
+        window: (chunks: unknown) => String(chunks ?? ""),
+        hide: (chunks: unknown) => String(chunks ?? ""),
+        countdown: (chunks: unknown) => String(chunks ?? ""),
+      } as unknown as Record<string, unknown>);
+    } catch {
+      return key;
+    }
+  };
+
   return {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    name: t("title"),
-    description: t("subtitle"),
+    name: getPlain("title"),
+    description: getPlain("subtitle"),
     inLanguage: locale,
     totalTime: "PT2M",
     step: [1, 2, 3, 4].map((n) => ({
       "@type": "HowToStep",
-      name: t(`step${n}.title`),
-      text: t(`step${n}.description`),
+      name: getPlain(`step${n}.title`),
+      text: getPlain(`step${n}.description`),
       url: `${SEO_BASE_URL}/${locale}/guide#step-${n}`,
     })),
   };
