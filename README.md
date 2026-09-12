@@ -80,6 +80,9 @@
 
 ## Screenshots
 
+<img width="1091" height="480" alt="zoom" src="https://github.com/user-attachments/assets/b163c6a6-7946-47a5-9c21-b0b5c1c9c836" />
+
+
 <table width="100%">
   <tr>
     <td width="60%">
@@ -116,8 +119,6 @@
     </td>
   </tr>
 </table>
-
-   <img width="1729" height="918" alt="openvid-1784321861424 (1)" src="https://github.com/user-attachments/assets/fdca5a94-1119-449d-9436-3a2b09c58e94" />
 
 ---
 
