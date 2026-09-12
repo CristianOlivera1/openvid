@@ -9,7 +9,10 @@
     "loggingOut": "Cerrando sesión...",
     "menu": "Menú",
     "screen": "Grabar",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "videoEditor": "Editor de Video",
+    "screenRecorder": "Grabador de Pantalla",
+    "product": "Producto"
   },
   "footer": {
     "description": "Aplicación moderna para la <recording>grabación de pantalla</recording> y la <editing>edición de vídeo</editing>. Diseñada para la web. Sin instalaciones, sin esperas y directamente en tu navegador.",
@@ -23,7 +26,9 @@
     "editor": "Ir al editor",
     "donate": "Donar",
     "github": "GitHub",
-    "email": "E-mail"
+    "email": "E-mail",
+    "videoEditor": "Editor de Video",
+    "screenRecorder": "Grabador de Pantalla"
   },
   "privacy": {
     "backToHome": "Volver al inicio",
@@ -1544,14 +1549,35 @@
     "featuresTitle": "Todo lo que necesitas",
     "howItWorksTitle": "Cómo funciona en 3 pasos",
     "features": [
-      { "title": "Zooms cinemáticos", "desc": "Sigue el cursor y enfoca. Velocidad y focus ajustables automáticamente con IA." },
-      { "title": "Mockups 3D", "desc": "Envuelve tu video en MacBook, iPhone o iPad en un clic." },
-      { "title": "Timeline multi-pista", "desc": "Varios videos, audios y zooms en un solo lienzo. Recorta y sincroniza capas fácilmente con vista previa en tiempo real." }
+      {
+        "title": "Zooms cinemáticos",
+        "desc": "Sigue el cursor y enfoca. Velocidad y focus ajustables automáticamente con IA."
+      },
+      {
+        "title": "Mockups 3D",
+        "desc": "Envuelve tu video en MacBook, iPhone o iPad en un clic."
+      },
+      {
+        "title": "Timeline multi-pista",
+        "desc": "Varios videos, audios y zooms en un solo lienzo. Recorta y sincroniza capas fácilmente con vista previa en tiempo real."
+      }
     ],
     "steps": [
-      { "t": "Sube o graba", "d": "Arrastra tu MP4/WebM o graba pantalla con audio y cámara directo en el navegador.", "tag": "Input" },
-      { "t": "Edita con zooms", "d": "Añade zooms cinemáticos con IA, mockups 3D y ajusta tu timeline con precisión.", "tag": "Processing" },
-      { "t": "Exporta en HD", "d": "Selecciona el formato 16:9, 9:16 o 1:1 y descarga en MP4/GIF sin marcas de agua.", "tag": "Output" }
+      {
+        "t": "Sube o graba",
+        "d": "Arrastra tu MP4/WebM o graba pantalla con audio y cámara directo en el navegador.",
+        "tag": "Input"
+      },
+      {
+        "t": "Edita con zooms",
+        "d": "Añade zooms cinemáticos con IA, mockups 3D y ajusta tu timeline con precisión.",
+        "tag": "Processing"
+      },
+      {
+        "t": "Exporta en HD",
+        "d": "Selecciona el formato 16:9, 9:16 o 1:1 y descarga en MP4/GIF sin marcas de agua.",
+        "tag": "Output"
+      }
     ],
     "faqEyebrow": "FAQ del editor",
     "faqTitle1": "Dudas sobre el",
@@ -1561,10 +1587,22 @@
     "ctaSubtitle": "Gratis, sin marca de agua y sin instalar nada.",
     "ctaButton": "Abrir editor de video",
     "faqItems": [
-      { "q": "¿Es gratis y sin marca de agua?", "a": "Sí. Exportas en HD sin marca de agua y sin tarjeta. Gratis para tus primeros proyectos." },
-      { "q": "¿Necesito instalar algo?", "a": "No. Funciona en el navegador (Chrome, Edge, Firefox) en Windows, Mac y Linux." },
-      { "q": "¿Qué formatos exporta?", "a": "MP4 H.264 hasta 4K, WebM con transparencia y GIF. Eliges 16:9, 9:16 o 1:1." },
-      { "q": "¿Mis videos son privados?", "a": "Sí. Todo se procesa localmente con WebAssembly. Tus videos no se suben a servidores." }
+      {
+        "q": "¿Es gratis y sin marca de agua?",
+        "a": "Sí. Exportas en HD sin marca de agua y sin tarjeta. Gratis para tus primeros proyectos."
+      },
+      {
+        "q": "¿Necesito instalar algo?",
+        "a": "No. Funciona en el navegador (Chrome, Edge, Firefox) en Windows, Mac y Linux."
+      },
+      {
+        "q": "¿Qué formatos exporta?",
+        "a": "MP4 H.264 hasta 4K, WebM con transparencia y GIF. Eliges 16:9, 9:16 o 1:1."
+      },
+      {
+        "q": "¿Mis videos son privados?",
+        "a": "Sí. Todo se procesa localmente con WebAssembly. Tus videos no se suben a servidores."
+      }
     ]
   },
   "screenRecorder": {
@@ -1575,16 +1613,40 @@
     "ctaPrimary": "Grabar pantalla gratis",
     "ctaSecondary": "Ver guía",
     "features": [
-      { "title": "Captura nítida hasta 4K", "desc": "Graba tu pantalla con resolución cristalina a 60fps. Sin marcas de agua y sin pérdidas de rendimiento." },
-      { "title": "Cámara en burbuja", "desc": "Añade tu webcam con forma de círculo o squircle, tamaño personalizable y posición flotante." },
-      { "title": "Audio completo e integración directa", "desc": "Captura tu micrófono y audio del sistema por separado. Pasa directamente al editor de video sin exportaciones intermedias." }
+      {
+        "title": "Captura nítida hasta 4K",
+        "desc": "Graba tu pantalla con resolución cristalina a 60fps. Sin marcas de agua y sin pérdidas de rendimiento."
+      },
+      {
+        "title": "Cámara en burbuja",
+        "desc": "Añade tu webcam con forma de círculo o squircle, tamaño personalizable y posición flotante."
+      },
+      {
+        "title": "Audio completo e integración directa",
+        "desc": "Captura tu micrófono y audio del sistema por separado. Pasa directamente al editor de video sin exportaciones intermedias."
+      }
     ],
     "stepsTitle": "Cómo funciona en 3 pasos",
     "stepsSubtitle": "Graba tu pantalla y pasa directamente a la edición sin perder tiempo.",
     "steps": [
-      { "n": "01", "t": "Elige qué grabar", "d": "Selecciona pestaña, ventana o pantalla completa. Activa el audio del sistema según necesites.", "tag": "Input" },
-      { "n": "02", "t": "Graba con cámara", "d": "Burbuja arrastrable, ajuste de esquinas y modo espejo con cuenta atrás previa de 3 segundos.", "tag": "Recording" },
-      { "n": "03", "t": "Edita al instante", "d": "Al detener la grabación, tu video se abre en el editor para aplicar zooms, mockups 3D y exportar.", "tag": "Output" }
+      {
+        "n": "01",
+        "t": "Elige qué grabar",
+        "d": "Selecciona pestaña, ventana o pantalla completa. Activa el audio del sistema según necesites.",
+        "tag": "Input"
+      },
+      {
+        "n": "02",
+        "t": "Graba con cámara",
+        "d": "Burbuja arrastrable, ajuste de esquinas y modo espejo con cuenta atrás previa de 3 segundos.",
+        "tag": "Recording"
+      },
+      {
+        "n": "03",
+        "t": "Edita al instante",
+        "d": "Al detener la grabación, tu video se abre en el editor para aplicar zooms, mockups 3D y exportar.",
+        "tag": "Output"
+      }
     ],
     "ctaTitle": "¿Listo para empezar a grabar?",
     "ctaSubtitle": "Gratis, sin marca de agua y sin instalar nada. Tu primera grabación en 30 segundos.",

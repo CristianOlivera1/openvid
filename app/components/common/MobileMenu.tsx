@@ -85,7 +85,6 @@ export function MobileMenu() {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 animate-in fade-in duration-200" />
         <Dialog.Content className="fixed top-0 right-0 bottom-0 w-70 bg-[#0a0a0a] border-l border-white/10 z-50 animate-in slide-in-from-right duration-300 flex flex-col">
-          {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/5">
             <div className="flex flex-col">
               <Dialog.Title className="sr-only">{t('menu')}</Dialog.Title>
@@ -107,6 +106,24 @@ export function MobileMenu() {
           </div>
           <nav className="flex-1 overflow-y-auto p-4">
             <div className="space-y-2">
+              <Link
+                href="/video-editor"
+                onClick={closeMenu}
+                className="flex items-center gap-3 px-4 py-3 text-neutral-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              >
+                <Icon icon="mdi:movie-edit-outline" className="w-5 h-5" aria-hidden="true" />
+                <span>{t('videoEditor')}</span>
+              </Link>
+
+              <Link
+                href="/screen-recorder"
+                onClick={closeMenu}
+                className="flex items-center gap-3 px-4 py-3 text-neutral-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              >
+                <Icon icon="mdi:record-circle-outline" className="w-5 h-5" aria-hidden="true" />
+                <span>{t('screenRecorder')}</span>
+              </Link>
+
               <Link
                 href="/guide"
                 target="_blank"

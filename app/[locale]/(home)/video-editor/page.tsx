@@ -40,9 +40,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const FEATURE_META = [
-  { icon: "mdi:magnify-plus-outline", videoSrc: "/videos/seo/zoom-demo.mp4", banner: "/images/banners/banner-zoom.webp", colSpan: "md:col-span-2", aspect: "aspect-video md:aspect-[16/9]" },
-  { icon: "mdi:cellphone", videoSrc: "/videos/seo/mockup-3d.mp4", banner: "/images/banners/banner-mockup.webp", colSpan: "md:col-span-1", aspect: "aspect-video md:aspect-[3/4]" },
-  { icon: "mdi:layers-outline", videoSrc: "/videos/seo/timeline.mp4", banner: "/images/banners/banner-timeline.webp", colSpan: "md:col-span-3", aspect: "aspect-video md:aspect-[21/9]" },
+  { icon: "mdi:magnify-plus-outline", videoSrc: "/videos/seo/zoom-demo.mp4", banner: "/images/seo/banner-zoom.webp", colSpan: "md:col-span-2", aspect: "aspect-video md:aspect-[16/9]" },
+  { icon: "mdi:cellphone", videoSrc: "/videos/seo/mockup-3d.mp4", banner: "/images/seo/banner-mockup.webp", colSpan: "md:col-span-1", aspect: "aspect-video md:aspect-[3/4]" },
+  { icon: "mdi:layers-outline", videoSrc: "/videos/seo/timeline.mp4", banner: "/images/seo/banner-timeline.webp", colSpan: "md:col-span-3", aspect: "aspect-video md:aspect-[21/9]" },
 ];
 
 export default async function VideoEditorPage({ params }: Props) {
@@ -92,7 +92,7 @@ export default async function VideoEditorPage({ params }: Props) {
               </div>
             </div>
             <div className="relative squircle-element-2xl overflow-hidden border border-white/10 bg-neutral-950 aspect-video flex items-center justify-center">
-              <video autoPlay loop muted playsInline poster="/images/banners/banner-hero.webp" className="absolute inset-0 w-full h-full object-cover opacity-90">
+              <video autoPlay loop muted playsInline poster="/images/pages/preview-editor-poster.webp" className="absolute inset-0 w-full h-full object-cover opacity-90">
                 <source src="/videos/hero/demo-preview-editor.mp4" type="video/mp4" />
               </video>
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
