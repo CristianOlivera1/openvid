@@ -80,6 +80,7 @@ export function Timeline({
     const rafIdRef = useRef<number | null>(null);
     const isSeekingRef = useRef<boolean>(false);
     const [isHoveringZoomRow, setIsHoveringZoomRow] = useState(false);
+    const isPointerInsideTimelineRef = useRef(false);
     const [ghostX, setGhostX] = useState(0);
     const ghostRafRef = useRef<number | null>(null);
     const pendingGhostXRef = useRef<number | null>(null);
@@ -268,6 +269,41 @@ export function Timeline({
             onSeek(clampedTime);
         }
     }, [contentWidth, scaledDuration, validDuration, onSeek, isDragging, isDraggingTrim, trimRange]);
+
+    useEffect(() => {
+        const track = trackRef.current;
+        if (!track) return;
+
+        const handleWheel = (e: WheelEvent) => {
+            if (!e.ctrlKey && !e.metaKey) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            const direction = e.deltaY < 0 ? 1 : -1;
+            onZoomChange?.(Math.max(1, Math.min(10, Math.round(zoomLevel) + direction)));
+        };
+
+        track.addEventListener("wheel", handleWheel, { passive: false });
+        return () => track.removeEventListener("wheel", handleWheel);
+    }, [onZoomChange, zoomLevel]);
+
+    useEffect(() => {
+        const handleTimelineZoomKeyDown = (e: KeyboardEvent) => {
+            if (!isPointerInsideTimelineRef.current || (!e.ctrlKey && !e.metaKey)) return;
+
+            const zoomIn = e.key === "+" || e.key === "=";
+            const zoomOut = e.key === "-" || e.key === "_";
+            if (!zoomIn && !zoomOut) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            const direction = zoomIn ? 1 : -1;
+            onZoomChange?.(Math.max(1, Math.min(10, Math.round(zoomLevel) + direction)));
+        };
+
+        window.addEventListener("keydown", handleTimelineZoomKeyDown, true);
+        return () => window.removeEventListener("keydown", handleTimelineZoomKeyDown, true);
+    }, [onZoomChange, zoomLevel]);
 
     const handleDrag = useCallback((_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         if (contentWidth === 0 || scaledDuration === 0) return;
@@ -537,6 +573,8 @@ export function Timeline({
                 <div className="flex-1 flex flex-col relative overflow-hidden">
                     <div
                         ref={trackRef}
+                        onMouseEnter={() => { isPointerInsideTimelineRef.current = true; }}
+                        onMouseLeave={() => { isPointerInsideTimelineRef.current = false; }}
                         className={`flex-1 overflow-x-auto custom-scrollbar pr-2 ${audioTracks.length > 0 || elementLaneCount > 1 || canvasElements.length > 0 || showMovementRow
                             ? "overflow-y-auto no-scrollbar"
                             : "overflow-y-hidden"

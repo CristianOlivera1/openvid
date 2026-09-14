@@ -1,6 +1,7 @@
 import type { SvgElement, CanvasElement } from "@/types/canvas-elements.types";
 import { getSvgDataUrl } from "@/components/canvas-svg";
 import { VIDEO_Z_INDEX } from "@/lib/constants";
+import { getTextAnimationState } from "@/lib/text-animation.utils";
 
 export async function renderCanvasElements(
   ctx: CanvasRenderingContext2D,
@@ -10,6 +11,8 @@ export async function renderCanvasElements(
   behindVideo: boolean,
   svgImageCache: Map<string, HTMLImageElement>,
   elementImageCache: Map<string, HTMLImageElement>,
+  frameTime = 0,
+  defaultEndTime = 0,
 ): Promise<void> {
   const filteredElements = elements.filter(el =>
     behindVideo ? el.zIndex < VIDEO_Z_INDEX : el.zIndex >= VIDEO_Z_INDEX
@@ -96,19 +99,41 @@ export async function renderCanvasElements(
       );
       ctx.restore();
     } else if (element.type === "text") {
+      const animation = getTextAnimationState(element, frameTime, defaultEndTime);
       ctx.save();
       const elemX = (element.x / 100) * canvasWidth;
       const elemY = (element.y / 100) * canvasHeight;
       ctx.translate(elemX, elemY);
-      ctx.rotate((element.rotation * Math.PI) / 180);
-      ctx.globalAlpha = element.opacity;
+      ctx.translate(animation.translateX, animation.translateY);
+      ctx.rotate(((element.rotation + animation.rotation) * Math.PI) / 180);
+      ctx.scale(animation.scale, animation.scale);
+      if (animation.blur > 0) ctx.filter = `blur(${animation.blur}px)`;
+      ctx.globalAlpha = element.opacity * animation.opacity;
       const scaledFontSize = element.fontSize * (referenceSize / 1080);
       const fontWeight = element.fontWeight === 'normal' ? '400' : element.fontWeight === 'medium' ? '500' : '700';
       ctx.font = `${fontWeight} ${scaledFontSize}px ${element.fontFamily}`;
       ctx.fillStyle = element.color;
+      if (element.useGradient) {
+        const gradient = ctx.createLinearGradient(-scaledFontSize, 0, scaledFontSize, 0);
+        gradient.addColorStop(0, element.color);
+        gradient.addColorStop(1, element.colorEnd ?? element.color);
+        ctx.fillStyle = gradient;
+      }
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(element.content, 0, 0);
+      if (element.strokeEnabled && element.strokeWidth) {
+        ctx.lineWidth = element.strokeWidth;
+        if (element.strokeGradient) {
+          const strokeGradient = ctx.createLinearGradient(-scaledFontSize, 0, scaledFontSize, 0);
+          strokeGradient.addColorStop(0, element.strokeColor ?? '#000000');
+          strokeGradient.addColorStop(1, element.strokeColorEnd ?? element.strokeColor ?? '#000000');
+          ctx.strokeStyle = strokeGradient;
+        } else {
+          ctx.strokeStyle = element.strokeColor ?? '#000000';
+        }
+        ctx.strokeText(animation.content, 0, 0);
+      }
+      ctx.fillText(animation.content, 0, 0);
       ctx.restore();
     }
   }

@@ -9,6 +9,7 @@ import {
     CORNER_RESIZE_CURSOR,
 } from "@/lib";
 import { CanvasElement, SvgElement, ImageElement, TextElement } from "@/types/canvas-elements.types";
+import { applyTextCase, getTextAnimationState } from "@/lib/text-animation.utils";
 import { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 
 export interface ElementResizeStart {
@@ -124,6 +125,8 @@ function CanvasElementsLayerImpl({
     isDraggingElementResize = false,
     setIsDraggingElementResize,
     elementResizeStart,
+    currentTime = 0,
+    defaultEndTime = 0,
 }: {
     canvasContainerRef?: React.RefObject<HTMLDivElement | null>;
     canvasElements: CanvasElement[];
@@ -152,6 +155,8 @@ function CanvasElementsLayerImpl({
     isDraggingElementResize?: boolean;
     setIsDraggingElementResize?: (dragging: boolean) => void;
     elementResizeStart?: React.MutableRefObject<ElementResizeStart | null>;
+    currentTime?: number;
+    defaultEndTime?: number;
 }) {
     const layerRef = useRef<HTMLDivElement>(null);
     const [refSize, setRefSize] = useState(0);
@@ -491,6 +496,10 @@ function CanvasElementsLayerImpl({
 
                 if (element.type === "text") {
                     const isEditing = editingTextId === element.id;
+                    const textElement = element as TextElement;
+                    const animation = isEditing
+                        ? { opacity: textElement.opacity, translateX: 0, translateY: 0, scale: 1, rotation: 0, blur: 0, clipProgress: 1, content: applyTextCase(textElement.content, textElement.textCase) }
+                        : getTextAnimationState(textElement, currentTime, defaultEndTime);
                     return (
                         <div
                             key={element.id}
@@ -498,7 +507,9 @@ function CanvasElementsLayerImpl({
                             style={{
                                 left: `${element.x}%`,
                                 top: `${element.y}%`,
-                                transform: `translate(-50%, -50%) rotate(${element.rotation}deg)`,
+                                transform: `translate(calc(-50% + ${animation.translateX}px), calc(-50% + ${animation.translateY}px)) rotate(${element.rotation + animation.rotation}deg) scale(${animation.scale})`,
+                                filter: animation.blur > 0 ? `blur(${animation.blur}px)` : undefined,
+                                clipPath: animation.clipProgress < 1 ? `inset(0 ${(1 - animation.clipProgress) * 100}% 0 0)` : undefined,
                                 zIndex: isEditing ? 9999 : element.zIndex,
                                 transition: isDraggingElement ? 'none' : 'transform 0.1s ease-out',
                                 pointerEvents: isEditing ? 'auto' : 'none',
@@ -516,18 +527,23 @@ function CanvasElementsLayerImpl({
                                 <div
                                     className="whitespace-pre"
                                     style={{
-                                        fontSize: refSize > 0 ? `${element.fontSize * (refSize / 1080)}px` : `${element.fontSize}px`,
-                                        fontFamily: element.fontFamily,
-                                        fontWeight: element.fontWeight === 'normal' ? 400 : element.fontWeight === 'medium' ? 500 : 700,
+                                        fontSize: refSize > 0 ? `${textElement.fontSize * (refSize / 1080)}px` : `${textElement.fontSize}px`,
+                                        fontFamily: textElement.fontFamily,
+                                        fontWeight: textElement.fontWeight === 'normal' ? 400 : textElement.fontWeight === 'medium' ? 500 : 700,
                                         textAlign: 'left',
-                                        color: element.color,
+                                        color: textElement.color,
+                                        backgroundImage: textElement.useGradient ? `linear-gradient(100deg, ${textElement.color}, ${textElement.colorEnd ?? textElement.color})` : undefined,
+                                        backgroundClip: textElement.useGradient ? 'text' : undefined,
+                                        WebkitBackgroundClip: textElement.useGradient ? 'text' : undefined,
+                                        WebkitTextFillColor: textElement.useGradient ? 'transparent' : undefined,
+                                        WebkitTextStroke: textElement.strokeEnabled && textElement.strokeWidth ? `${textElement.strokeWidth}px ${textElement.strokeColor ?? '#000000'}` : undefined,
                                         pointerEvents: 'none',
-                                        opacity: element.opacity,
+                                        opacity: animation.opacity * textElement.opacity,
                                         lineHeight: 1.2,
                                         padding: '2px 6px',
                                     }}
                                 >
-                                    {element.content}
+                                    {animation.content}
                                 </div>
                             )}
                         </div>

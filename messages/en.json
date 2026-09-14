@@ -797,6 +797,25 @@
       "size": "Size",
       "font": "Font",
       "weight": "Weight",
+      "gradientStart": "Start color",
+      "gradientEnd": "End color",
+      "fill": "Fill",
+      "color": "Color",
+      "useGradient": "Use gradient",
+      "outline": "Text outline",
+      "toggleOutline": "Toggle text outline",
+      "outlineColor": "Outline",
+      "outlineEnd": "Outline end",
+      "outlineWidth": "Outline width",
+      "useOutlineGradient": "Gradient outline",
+      "animation": {
+        "title": "Text animation",
+        "entry": "Entry",
+        "exit": "Exit",
+        "duration": "Duration",
+        "entryDuration": "Entry duration",
+        "exitDuration": "Exit duration"
+      },
       "addButton": "Add text"
     },
     "uploads": {

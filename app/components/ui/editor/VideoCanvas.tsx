@@ -1472,14 +1472,14 @@ function VideoCanvasInner({
                 ctx.translate(-zoomCenterX, -zoomCenterY + iTY);
             }
             drawBg(ctx);
-            await renderCanvasElements(ctx, visibleElementsAtFrame, canvasWidth, canvasHeight, true, svgImageCacheRef.current, elementImagesRef.current);
+            await renderCanvasElements(ctx, visibleElementsAtFrame, canvasWidth, canvasHeight, true, svgImageCacheRef.current, elementImagesRef.current, frameTime, videoDuration);
             const { containerX: cX, containerY: cY, containerWidth: cW, containerHeight: cH } = computeContainer();
             // Only draw the 2D mockup + media when the 3D phone overlay is NOT active.
             // In the preview, CSS opacity:0 hides the video layer; here we skip drawing it.
             if (!imagePhoneActive) {
                 drawMockupAndMedia(ctx, cX, cY, cW, cH, image!, true, false, mockupDrawCtx);
             }
-            await renderCanvasElements(ctx, visibleElementsAtFrame, canvasWidth, canvasHeight, false, svgImageCacheRef.current, elementImagesRef.current);
+            await renderCanvasElements(ctx, visibleElementsAtFrame, canvasWidth, canvasHeight, false, svgImageCacheRef.current, elementImagesRef.current, frameTime, videoDuration);
             // ── Composite image phone mockup (WebGL snapshot) onto export canvas ──
             if (imagePhoneActive && imagePhoneCanvasRef.current) {
                 const phoneGL = imagePhoneCanvasRef.current;
@@ -1644,7 +1644,7 @@ function VideoCanvasInner({
 
         ctx.save();
         applyVideoZoom(ctx);
-        await renderCanvasElements(ctx, visibleElementsAtFrame, canvasWidth, canvasHeight, true, svgImageCacheRef.current, elementImagesRef.current);
+        await renderCanvasElements(ctx, visibleElementsAtFrame, canvasWidth, canvasHeight, true, svgImageCacheRef.current, elementImagesRef.current, frameTime, videoDuration);
         ctx.restore();
 
         // Mirror the preview's per-clip gating: only paint the camera overlay on
@@ -1809,7 +1809,7 @@ function VideoCanvasInner({
 
         ctx.save();
         applyVideoZoom(ctx);
-        await renderCanvasElements(ctx, visibleElementsAtFrame, canvasWidth, canvasHeight, false, svgImageCacheRef.current, elementImagesRef.current);
+        await renderCanvasElements(ctx, visibleElementsAtFrame, canvasWidth, canvasHeight, false, svgImageCacheRef.current, elementImagesRef.current, frameTime, videoDuration);
         ctx.restore();
 
         if (showCameraOverlay) {
@@ -2161,6 +2161,8 @@ function VideoCanvasInner({
                                         isDraggingElementResize={isDraggingElementResize}
                                         setIsDraggingElementResize={setIsDraggingElementResize}
                                         elementResizeStart={elementResizeStart}
+                                        currentTime={currentTime}
+                                        defaultEndTime={videoDuration}
                                     />
 
                                     {/* 3D rotation layer — solo envuelve el mockup, el fondo queda plano */}
@@ -2428,6 +2430,8 @@ function VideoCanvasInner({
                                         isDraggingElementResize={isDraggingElementResize}
                                         setIsDraggingElementResize={setIsDraggingElementResize}
                                         elementResizeStart={elementResizeStart}
+                                        currentTime={currentTime}
+                                        defaultEndTime={videoDuration}
                                     />
 
                                     {/* Capa HIT: invisible, todos los elementos, para recibir eventos */}
@@ -2451,6 +2455,8 @@ function VideoCanvasInner({
                                         isDraggingElementResize={isDraggingElementResize}
                                         setIsDraggingElementResize={setIsDraggingElementResize}
                                         elementResizeStart={elementResizeStart}
+                                        currentTime={currentTime}
+                                        defaultEndTime={videoDuration}
                                         elementDragStart={elementDragStart}
                                         layerZIndex={200}
                                         hitTestOnly={true}
