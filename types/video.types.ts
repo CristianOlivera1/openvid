@@ -11,6 +11,7 @@ export interface TrimSettings {
 export interface ExportSettings {
     quality: ExportQuality;
     fps?: number;
+    bitrate?: number;
     trim?: TrimSettings;
     transparentBackground?: boolean;
     muteOriginalAudio?: boolean;
@@ -35,6 +36,12 @@ export interface ExportProgress {
     status: "idle" | "preparing" | "encoding" | "finalizing" | "complete" | "error";
     progress: number;
     message: string;
+    step?: "capturing" | "encoding" | "encodingWebM" | "preparing" | "finalizing";
+    fpsCurrent?: number;
+    speedMultiplier?: number;
+    etaSeconds?: number;
+    currentFrame?: number;
+    totalFrames?: number;
 }
 
 export interface QualitySettings {

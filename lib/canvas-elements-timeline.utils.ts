@@ -50,6 +50,8 @@ export function assignElementLanes(
   return laneOf;
 }
 
+import { IntervalTree } from "./dsa/interval-tree";
+
 export function isElementVisibleAtTime(
   element: CanvasElement,
   time: number,
@@ -59,12 +61,31 @@ export function isElementVisibleAtTime(
   return time >= startTime && time <= endTime;
 }
 
+export function createElementsIntervalTree(
+  elements: CanvasElement[],
+  defaultEndTime: number
+): IntervalTree<CanvasElement> {
+  const items = elements.map((el) => {
+    const { startTime, endTime } = getElementTimeRange(el, defaultEndTime);
+    return {
+      start: startTime,
+      end: endTime,
+      data: el,
+    };
+  });
+  return new IntervalTree<CanvasElement>(items);
+}
+
 export function filterVisibleElements(
   elements: CanvasElement[],
   time: number,
   defaultEndTime: number,
 ): CanvasElement[] {
-  return elements.filter((el) => isElementVisibleAtTime(el, time, defaultEndTime));
+  if (elements.length < 8) {
+    return elements.filter((el) => isElementVisibleAtTime(el, time, defaultEndTime));
+  }
+  const tree = createElementsIntervalTree(elements, defaultEndTime);
+  return tree.queryPoint(time).sort((a, b) => a.zIndex - b.zIndex);
 }
 
 export const MIN_FRAGMENT_DURATION = 0.3;

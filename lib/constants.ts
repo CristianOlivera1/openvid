@@ -4,19 +4,19 @@ export const EXPORT_WIDTH = 1920;
 export const EXPORT_HEIGHT = 1080;
 
 export const QUALITY_SETTINGS: Record<string, QualitySettings> = {
-    "4k": { width: 3840, height: 2160, bitrate: 40_000_000, fps: 30 },
-    "2k": { width: 2560, height: 1440, bitrate: 16_000_000, fps: 30 },
-    "1080p": { width: 1920, height: 1080, bitrate: 8_000_000, fps: 30 },
-    "720p": { width: 1280, height: 720, bitrate: 5_000_000, fps: 30 },
-    "480p": { width: 854, height: 480, bitrate: 2_500_000, fps: 24 },
+    "4k": { width: 3840, height: 2160, bitrate: 45_000_000, fps: 60 },
+    "2k": { width: 2560, height: 1440, bitrate: 20_000_000, fps: 60 },
+    "1080p": { width: 1920, height: 1080, bitrate: 12_000_000, fps: 60 },
+    "720p": { width: 1280, height: 720, bitrate: 6_000_000, fps: 60 },
+    "480p": { width: 854, height: 480, bitrate: 2_500_000, fps: 30 },
     "gif": { width: 1280, height: 720, bitrate: 2_500_000, fps: 24 },
-    "webm-alpha": { width: 1280, height: 720, bitrate: 2_000_000, fps: 24 },
+    "webm-alpha": { width: 1280, height: 720, bitrate: 4_000_000, fps: 60 },
 };
 
 /**
  * FPS por defecto para exportación (fallback)
  */
-export const DEFAULT_EXPORT_FPS = 30;
+export const DEFAULT_EXPORT_FPS = 60;
 
 /**
  * Ancho de referencia del contenedor de preview (max-w-4xl en Tailwind)

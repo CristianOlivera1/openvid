@@ -191,6 +191,7 @@ export default async function LocaleLayout({
         />
       </head>
       <body
+        suppressHydrationWarning
         className={`${inter.variable} ${roboto.variable} ${inter.className} antialiased`}
       >
         <SuppressScriptWarning />

@@ -2,36 +2,29 @@ import { TIMELINE_ZOOM_SCALE } from './constants';
 import { forceResolveVideoDuration } from './webm-duration.utils';
 
 export function waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
+    if (!video.seeking && video.readyState >= 2) {
+        return Promise.resolve();
+    }
     return new Promise((resolve) => {
         let resolved = false;
 
         const done = () => {
             if (!resolved) {
                 resolved = true;
+                video.removeEventListener('seeked', done);
                 resolve();
             }
         };
 
-        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (video as any).requestVideoFrameCallback(done);
-            // Safety timeout: 500ms is enough for local video seeks. The
-            // previous 2000ms value caused unnecessary stalls when the
-            // callback was missed (e.g. seeking to the same timestamp).
-            setTimeout(done, 500);
+        if (video.seeking) {
+            video.addEventListener('seeked', done, { once: true });
         } else {
-            // Fallback for browsers that do not support requestVideoFrameCallback
-            if (video.readyState >= 2) {
-                const handleSeeked = () => {
-                    video.removeEventListener('seeked', handleSeeked);
-                    done();
-                };
-                video.addEventListener('seeked', handleSeeked, { once: true });
-                setTimeout(done, 100);
-            } else {
-                requestAnimationFrame(done);
-            }
+            done();
+            return;
         }
+
+        // Ultra-fast safety timeout for memory blobs
+        setTimeout(done, 100);
     });
 }
 
