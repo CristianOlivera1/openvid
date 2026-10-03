@@ -53,10 +53,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
   const [bitrateMode, setBitrateMode] = useState<BitratePreset>("balanced");
   const [customBitrateMbps, setCustomBitrateMbps] = useState<number>(12);
 
-  const isExporting = exportProgress.status !== "idle" && 
-                      exportProgress.status !== "complete" && 
-                      exportProgress.status !== "error";
-  
+  const isExporting = exportProgress.status !== "idle" &&
+    exportProgress.status !== "complete" &&
+    exportProgress.status !== "error";
+
   const isTransparent = !!hasTransparentBackground;
 
   // Calculate effective bitrate in bits/sec based on preset or resolution
@@ -93,10 +93,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button 
-          variant="primary" 
-          className="px-3.5 py-2 text-sm gap-2 min-w-28 font-medium text-white shadow-sm transition-all hover:brightness-110 active:scale-95" 
-          size="sm" 
+        <Button
+          variant="primary"
+          className="px-3.5 py-2 text-sm gap-2 min-w-28 font-medium text-white shadow-sm transition-all hover:brightness-110 active:scale-95"
+          size="sm"
           disabled={isExporting}
           aria-label={t("button")}
         >
@@ -104,8 +104,8 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
           {t("button")}
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        align="end" 
+      <PopoverContent
+        align="end"
         className="w-[390px] p-0 bg-background/95 backdrop-blur-xl border border-border/80 text-foreground shadow-2xl rounded-xl overflow-hidden z-999999 max-h-[85vh] flex flex-col"
       >
         {/* Header */}
@@ -143,11 +143,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
               <button
                 type="button"
                 onClick={() => setSelectedFormat("mp4")}
-                className={`py-1.5 px-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                  selectedFormat === "mp4"
+                className={`py-1.5 px-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1.5 ${selectedFormat === "mp4"
                     ? "bg-background text-foreground shadow-sm font-semibold border border-border/40"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 <Icon icon="mdi:video" width="14" className={selectedFormat === "mp4" ? "text-blue-500" : ""} />
                 MP4
@@ -155,11 +154,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
               <button
                 type="button"
                 onClick={() => setSelectedFormat("webm")}
-                className={`py-1.5 px-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                  selectedFormat === "webm"
+                className={`py-1.5 px-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1.5 ${selectedFormat === "webm"
                     ? "bg-background text-foreground shadow-sm font-semibold border border-border/40"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 <Icon icon="mdi:web" width="14" className={selectedFormat === "webm" ? "text-cyan-500" : ""} />
                 WebM
@@ -167,11 +165,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
               <button
                 type="button"
                 onClick={() => setSelectedFormat("gif")}
-                className={`py-1.5 px-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1.5 ${
-                  selectedFormat === "gif"
+                className={`py-1.5 px-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1.5 ${selectedFormat === "gif"
                     ? "bg-background text-foreground shadow-sm font-semibold border border-border/40"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 <Icon icon="mdi:file-gif-box" width="14" className={selectedFormat === "gif" ? "text-orange-500" : ""} />
                 GIF
@@ -192,11 +189,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
                 <button
                   type="button"
                   onClick={() => setBitrateMode("whatsapp")}
-                  className={`py-1.5 px-1 text-[11px] font-medium rounded transition-all flex flex-col items-center gap-0.5 ${
-                    bitrateMode === "whatsapp"
+                  className={`py-1.5 px-1 text-[11px] font-medium rounded transition-all flex flex-col items-center gap-0.5 ${bitrateMode === "whatsapp"
                       ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold"
                       : "text-muted-foreground hover:text-foreground"
-                  }`}
+                    }`}
                 >
                   <Icon icon="ic:baseline-whatsapp" width="14" className="text-emerald-500" />
                   <span>WhatsApp</span>
@@ -206,11 +202,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
                 <button
                   type="button"
                   onClick={() => setBitrateMode("balanced")}
-                  className={`py-1.5 px-1 text-[11px] font-medium rounded transition-all flex flex-col items-center gap-0.5 ${
-                    bitrateMode === "balanced"
+                  className={`py-1.5 px-1 text-[11px] font-medium rounded transition-all flex flex-col items-center gap-0.5 ${bitrateMode === "balanced"
                       ? "bg-blue-500/15 text-blue-400 border border-blue-500/30 font-semibold"
                       : "text-muted-foreground hover:text-foreground"
-                  }`}
+                    }`}
                 >
                   <Icon icon="lucide:share-2" width="14" className="text-blue-500" />
                   <span>Social</span>
@@ -220,11 +215,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
                 <button
                   type="button"
                   onClick={() => setBitrateMode("youtube")}
-                  className={`py-1.5 px-1 text-[11px] font-medium rounded transition-all flex flex-col items-center gap-0.5 ${
-                    bitrateMode === "youtube"
+                  className={`py-1.5 px-1 text-[11px] font-medium rounded transition-all flex flex-col items-center gap-0.5 ${bitrateMode === "youtube"
                       ? "bg-red-500/15 text-red-400 border border-red-500/30 font-semibold"
                       : "text-muted-foreground hover:text-foreground"
-                  }`}
+                    }`}
                 >
                   <Icon icon="mdi:youtube" width="14" className="text-red-500" />
                   <span>YouTube</span>
@@ -234,11 +228,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
                 <button
                   type="button"
                   onClick={() => setBitrateMode("custom")}
-                  className={`py-1.5 px-1 text-[11px] font-medium rounded transition-all flex flex-col items-center gap-0.5 ${
-                    bitrateMode === "custom"
+                  className={`py-1.5 px-1 text-[11px] font-medium rounded transition-all flex flex-col items-center gap-0.5 ${bitrateMode === "custom"
                       ? "bg-purple-500/15 text-purple-400 border border-purple-500/30 font-semibold"
                       : "text-muted-foreground hover:text-foreground"
-                  }`}
+                    }`}
                 >
                   <Icon icon="lucide:sliders" width="14" className="text-purple-500" />
                   <span>Custom</span>
@@ -278,7 +271,7 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-medium text-muted-foreground">Framerate</span>
-                  <span className="text-[10px] text-blue-500/90 font-medium">✨ Smooth Scroll</span>
+                  <span className="text-[10px] text-blue-500/90 font-medium"> Smooth Scroll</span>
                 </div>
                 <span className="text-[10px] text-muted-foreground/70">
                   {selectedFps === 120 ? "120/144Hz Native" : selectedFps === 60 ? "Fluid 60 FPS" : "Standard 30 FPS"}
@@ -292,11 +285,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
                       key={preset.value}
                       type="button"
                       onClick={() => setSelectedFps(preset.value)}
-                      className={`p-2 rounded-lg border text-left transition-all relative ${
-                        isSelected
+                      className={`p-2 rounded-lg border text-left transition-all relative ${isSelected
                           ? "border-blue-500/60 bg-blue-500/10 text-foreground shadow-sm ring-1 ring-blue-500/30"
                           : "border-border/60 bg-card/40 hover:bg-muted/60 text-muted-foreground hover:text-foreground"
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <span className={`text-xs font-bold ${isSelected ? "text-blue-500 dark:text-blue-400" : ""}`}>
@@ -333,11 +325,10 @@ export function ExportDropdown({ onExport, exportProgress, hasTransparentBackgro
                       onClick={() => {
                         setSelectedQuality(opt.id);
                       }}
-                      className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-left transition-all ${
-                        isSelected
+                      className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-left transition-all ${isSelected
                           ? "border-primary/60 bg-primary/10 text-foreground ring-1 ring-primary/20"
                           : "border-border/40 hover:border-border/80 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <div className={`w-2 h-2 rounded-full ${isSelected ? "bg-primary" : "bg-muted-foreground/40"}`} />

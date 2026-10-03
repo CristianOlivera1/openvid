@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, RefObject, useRef } from "react";
-import { Output, Mp4OutputFormat, BufferTarget, CanvasSource, StreamTarget } from "mediabunny";
+import { Output, Mp4OutputFormat, BufferTarget, CanvasSource, StreamTarget, AudioBufferSource, Input, BlobSource, VideoSampleSink, type VideoSample, ALL_FORMATS } from "mediabunny";
 import type { VideoCanvasHandle } from "@/types";
 import type { ExportQuality, ExportSettings, ExportProgress } from "@/types";
 import { QUALITY_SETTINGS, DEFAULT_EXPORT_FPS } from "@/lib/constants";
@@ -15,6 +15,37 @@ export type { ExportQuality, ExportSettings, ExportProgress };
 
 interface CancellationToken {
     cancelled: boolean;
+}
+
+function playExportCompleteChime() {
+    try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(587.33, now);
+        gain1.gain.setValueAtTime(0.12, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.3);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(880, now + 0.1);
+        gain2.gain.setValueAtTime(0.15, now + 0.1);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.1);
+        osc2.stop(now + 0.5);
+    } catch { }
 }
 
 export function useVideoExport(
@@ -48,6 +79,13 @@ export function useVideoExport(
 
         cancellationRef.current = { cancelled: false };
         isExportingRef.current = true;
+
+        let wakeLockSentinel: any = null;
+        if (typeof navigator !== "undefined" && "wakeLock" in navigator) {
+            try {
+                wakeLockSentinel = await (navigator as any).wakeLock.request("screen");
+            } catch { }
+        }
 
         const video = videoRef.current;
         const canvasHandle = canvasRef.current;
@@ -217,6 +255,9 @@ export function useVideoExport(
                 });
             }
         } finally {
+            if (wakeLockSentinel) {
+                await wakeLockSentinel.release().catch(() => { });
+            }
             isExportingRef.current = false;
         }
     }, [videoRef, canvasRef]);
@@ -239,155 +280,123 @@ export function useVideoExport(
     };
 }
 
-async function exportWithMediabunny(
-    video: HTMLVideoElement,
-    canvasHandle: VideoCanvasHandle,
-    canvas: HTMLCanvasElement,
+async function mixAudioTracksToBuffer(
     duration: number,
     trimStart: number,
-    fps: number,
-    bitrate: number,
-    width: number,
-    height: number,
-    setProgress: (p: ExportProgress) => void,
-    cancellation: CancellationToken,
-    speed: number = 1,
-    sourceTrimStart: number = trimStart,
-): Promise<void> {
-    if (cancellation.cancelled) {
-        throw new Error("Export cancelled");
-    }
-
-    setProgress({
-        status: "encoding",
-        progress: 2,
-        message: "Configuring output file...",
-    });
-
-    const outputDuration = duration / speed;
-    const totalFrames = Math.ceil(outputDuration * fps);
-    const frameDuration = 1 / fps;
-
-    let target: StreamTarget | BufferTarget;
-    let isDirectToDisk = false;
+    speed: number,
+    settings: ExportSettings,
+    clips: VideoTrackClip[],
+    clipBlobs?: Map<string, Blob>,
+    clipAudioStates?: Record<string, boolean>,
+): Promise<AudioBuffer | null> {
     try {
-        const fileHandle = await window.showSaveFilePicker({
-            suggestedName: `openvid-${width}x${height}.mp4`,
-            types: [{ description: 'Video MP4', accept: { 'video/mp4': ['.mp4'] } }],
-        });
-        const writableStream = await fileHandle.createWritable();
-        target = new StreamTarget(writableStream);
-        isDirectToDisk = true;
-    } catch (error) {
-        console.warn("Direct-to-disk canceled or not supported. Using BufferTarget (RAM).", error);
-        target = new BufferTarget();
-    }
+        const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtxClass) return null;
+        const decodeCtx = new AudioCtxClass();
+        const sampleRate = 44100;
+        const outputDuration = duration / speed;
+        const totalSamples = Math.ceil(outputDuration * sampleRate);
+        if (totalSamples <= 0) return null;
 
-    const runEncodingPass = async (
-        acceleration: "prefer-hardware" | "prefer-software",
-        passTarget: StreamTarget | BufferTarget,
-    ): Promise<Output> => {
-        const passOutput = new Output({
-            format: new Mp4OutputFormat({ fastStart: "in-memory" }),
-            target: passTarget,
-        });
-        const videoSource = new CanvasSource(canvas, {
-            codec: "avc",
-            bitrate: bitrate,
-            bitrateMode: "variable",
-            latencyMode: "realtime",
-            keyFrameInterval: fps * 2,
-            fullCodecString: "avc1.640033",
-            hardwareAcceleration: acceleration,
-        });
-        passOutput.addVideoTrack(videoSource, { frameRate: fps });
-        await passOutput.start();
+        const offlineCtx = new OfflineAudioContext(2, totalSamples, sampleRate);
+        let hasAnyAudio = false;
 
-        video.pause();
-        video.currentTime = sourceTrimStart;
-        await waitForVideoFrame(video);
-        setProgress({ status: "encoding", progress: 10, message: `Starting encoding ${fps} fps...` });
+        const masterVolume = settings.masterVolume ?? 1;
+        const hasMultipleClips = clips && clips.length > 1 && clipBlobs;
+        const hasOriginalAudio = !settings.muteOriginalAudio && settings.videoHasAudioTrack !== false;
 
-        for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
-            if (cancellation.cancelled) { await passOutput.cancel(); throw new Error("Export cancelled"); }
-            const outputTime = frameIndex / fps;
-            const contentOffset = Math.min(outputTime * speed, duration - 0.001);
-            const timelineTime = trimStart + contentOffset;
-            await canvasHandle.drawFrame(true, timelineTime);
-            const nextIndex = frameIndex + 1;
-            let nextFrameReady: Promise<void> | null = null;
-            if (nextIndex < totalFrames) {
-                const nextContentOffset = Math.min((nextIndex / fps) * speed, duration - 0.001);
-                video.currentTime = sourceTrimStart + nextContentOffset;
-                nextFrameReady = waitForVideoFrame(video);
-            }
+        // 1. Process Video Clip / Source Audio
+        if (hasOriginalAudio) {
+            if (hasMultipleClips && clipBlobs) {
+                for (const clip of clips) {
+                    if (clipAudioStates && clipAudioStates[clip.libraryVideoId] === false) continue;
+                    const blob = clipBlobs.get(clip.libraryVideoId);
+                    if (!blob) continue;
+                    try {
+                        const arrayBuffer = await blob.arrayBuffer();
+                        const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer.slice(0));
+                        const sourceNode = offlineCtx.createBufferSource();
+                        sourceNode.buffer = audioBuffer;
+                        sourceNode.playbackRate.value = speed;
 
-            await videoSource.add(outputTime, frameDuration);
+                        const gainNode = offlineCtx.createGain();
+                        gainNode.gain.value = masterVolume;
 
-            if (frameIndex % 10 === 0 || frameIndex === totalFrames - 1) {
-                const progress = 10 + Math.round((frameIndex / totalFrames) * 80);
-                setProgress({
-                    status: "encoding",
-                    progress,
-                    message: `Encoding ${frameIndex + 1}/${totalFrames} frames (${fps}fps)...`,
-                });
-            }
+                        sourceNode.connect(gainNode);
+                        gainNode.connect(offlineCtx.destination);
 
-            if (nextFrameReady) {
-                await nextFrameReady;
+                        const clipStartTimeline = (clip.startTime / speed);
+                        const clipTrimStart = clip.trimStart || 0;
+                        const clipDuration = (clip.trimEnd - clip.trimStart) / speed;
+
+                        sourceNode.start(clipStartTimeline, clipTrimStart, clipDuration * speed);
+                        hasAnyAudio = true;
+                    } catch (e) {
+                        console.warn("Could not decode clip audio via Web Audio API:", e);
+                    }
+                }
+            } else if (settings.videoBlob && settings.videoBlob.size > 0) {
+                try {
+                    const arrayBuffer = await settings.videoBlob.arrayBuffer();
+                    const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer.slice(0));
+                    const sourceNode = offlineCtx.createBufferSource();
+                    sourceNode.buffer = audioBuffer;
+                    sourceNode.playbackRate.value = speed;
+
+                    const gainNode = offlineCtx.createGain();
+                    gainNode.gain.value = masterVolume;
+
+                    sourceNode.connect(gainNode);
+                    gainNode.connect(offlineCtx.destination);
+
+                    const sourceTrimStart = trimStart || 0;
+                    sourceNode.start(0, sourceTrimStart, duration);
+                    hasAnyAudio = true;
+                } catch (e) {
+                    console.warn("Could not decode source video audio via Web Audio API:", e);
+                }
             }
         }
 
-        if (cancellation.cancelled) {
-            await passOutput.cancel();
-            throw new Error("Export cancelled");
+        // 2. Extra Timeline Audio Tracks
+        if (settings.audioTracks && settings.audioTracks.length > 0) {
+            for (const track of settings.audioTracks) {
+                if (!track.audioUrl) continue;
+                try {
+                    const response = await fetch(track.audioUrl);
+                    const arrayBuffer = await response.arrayBuffer();
+                    const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
+                    const sourceNode = offlineCtx.createBufferSource();
+                    sourceNode.buffer = audioBuffer;
+                    sourceNode.playbackRate.value = speed;
+
+                    const gainNode = offlineCtx.createGain();
+                    gainNode.gain.value = (track.volume ?? 1) * masterVolume;
+
+                    sourceNode.connect(gainNode);
+                    gainNode.connect(offlineCtx.destination);
+
+                    const trackStartTimeline = (track.startTime / speed);
+                    const trackTrimStart = track.trimStart ?? 0;
+                    const trackDuration = track.duration;
+
+                    sourceNode.start(trackStartTimeline, trackTrimStart, trackDuration);
+                    hasAnyAudio = true;
+                } catch (e) {
+                    console.warn("Could not decode audio track:", e);
+                }
+            }
         }
 
-        return passOutput;
-    };
+        await decodeCtx.close().catch(() => {});
 
-    let output: Output;
-    let usedDirectToDisk = isDirectToDisk;
-    try {
-        output = await runEncodingPass("prefer-hardware", target);
-    } catch (error) {
-        if (cancellation.cancelled) {
-            throw error;
-        }
-        console.warn("Hardware-accelerated encoding failed. Retrying with software encoding.", error);
-        const retryTarget = new BufferTarget();
-        usedDirectToDisk = false;
-        output = await runEncodingPass("prefer-software", retryTarget);
-    }
+        if (!hasAnyAudio) return null;
 
-    setProgress({
-        status: "finalizing",
-        progress: 92,
-        message: "Finishing the coding...",
-    });
-    await output.finalize();
-
-    if (usedDirectToDisk) {
-        setProgress({
-            status: "complete",
-            progress: 100,
-            message: "Direct to disk export completed!",
-        });
-    } else {
-        setProgress({
-            status: "finalizing",
-            progress: 96,
-            message: "Generating final file..."
-        });
-        const buffer = (output.target as BufferTarget).buffer;
-        if (!buffer) throw new Error("Failed to generate the MP4 file");
-        const blob = new Blob([buffer], { type: "video/mp4" });
-        downloadBlob(blob, `openvid-${width}x${height}.mp4`);
-        setProgress({
-            status: "complete",
-            progress: 100,
-            message: "Export completed!",
-        });
+        const renderedBuffer = await offlineCtx.startRendering();
+        return renderedBuffer;
+    } catch (e) {
+        console.warn("Audio mixing with Web Audio API failed:", e);
+        return null;
     }
 }
 
@@ -405,88 +414,132 @@ async function exportWithMediabunnyAndAudio(
     cancellation: CancellationToken,
     settings: ExportSettings
 ): Promise<void> {
-    const hasAudioTracks = settings.audioTracks && settings.audioTracks.length > 0;
-    const sourceHasAudioStream = settings.videoHasAudioTrack !== false;
+    if (cancellation.cancelled) throw new Error("Export cancelled");
+
     const speed = settings.speed && settings.speed > 0 ? settings.speed : 1;
-    const hasMultipleClips = settings.videoClips && settings.videoClips.length > 1 && settings.videoClipBlobs;
-    const clips = settings.videoClips || [];
-    const clipBlobs = settings.videoClipBlobs;
-    const clipAudioStates = settings.clipAudioStates;
-    const sourceTrimStart = resolveClipTrimStart(clips, trimStart);
-
-    let hasPerClipAudio = true;
-    if (clipAudioStates) {
-        if (hasMultipleClips) {
-            hasPerClipAudio = clips.some(clip => clipAudioStates[clip.libraryVideoId] !== false);
-        } else if (clips.length > 0) {
-            hasPerClipAudio = clipAudioStates[clips[0].libraryVideoId] !== false;
-        }
-    }
-
-    const hasOriginalAudio = !settings.muteOriginalAudio && sourceHasAudioStream && hasPerClipAudio;
-    const needsAudioMixing = hasAudioTracks || hasOriginalAudio;
-
-    if (!needsAudioMixing && !hasMultipleClips) {
-        return exportWithMediabunny(
-            video, canvasHandle, canvas, duration, trimStart, fps, bitrate, width, height,
-            setProgress, cancellation, speed, sourceTrimStart
-        );
-    }
-
-    if (cancellation.cancelled) {
-        throw new Error("Export cancelled");
-    }
-
-    let ffmpegLoadPromise: Promise<FFmpeg> | null = null;
-    if (needsAudioMixing) {
-        ffmpegLoadPromise = (async () => {
-            const ffmpegInstance = new FFmpeg();
-            const baseURL = `${window.location.origin}/ffmpeg`;
-            await ffmpegInstance.load({
-                coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-            });
-            return ffmpegInstance;
-        })();
-    }
-
-    setProgress({
-        status: "encoding",
-        progress: 5,
-        message: hasMultipleClips ? `Preparing multi-clip export...` : `Preparing export with audio...`,
-    });
-
     const outputDuration = duration / speed;
     const totalFrames = Math.ceil(outputDuration * fps);
     const frameDuration = 1 / fps;
+    const clips = settings.videoClips || [];
+    const clipBlobs = settings.videoClipBlobs;
+    const hasMultipleClips = clips.length > 1 && !!clipBlobs;
+    const sourceTrimStart = resolveClipTrimStart(clips, trimStart);
+
+    setProgress({
+        status: "encoding",
+        progress: 2,
+        message: "Initializing GPU hardware pipelines...",
+    });
+
+    // 1. Audio mixing directly in Web Audio (rendered in <50ms)
+    let mixedAudioBuffer: AudioBuffer | null = null;
+    try {
+        mixedAudioBuffer = await mixAudioTracksToBuffer(
+            duration,
+            trimStart,
+            speed,
+            settings,
+            clips,
+            clipBlobs,
+            settings.clipAudioStates
+        );
+    } catch (e) {
+        console.warn("Audio mixing error:", e);
+    }
+
+    if (cancellation.cancelled) throw new Error("Export cancelled");
+
+    // 2. Hardware Video Demuxer & Decoder Sinks (WebCodecs GPU zero-copy)
+    let sourceBlob = settings.videoBlob;
+    if (!sourceBlob && video.src && !hasMultipleClips) {
+        try {
+            const res = await fetch(video.src);
+            sourceBlob = await res.blob();
+        } catch (e) {
+            console.warn("Could not fetch blob from video.src:", e);
+        }
+    }
+
+    const sinks = new Map<string, { sink: VideoSampleSink; input: Input }>();
+    if (!hasMultipleClips && sourceBlob && sourceBlob.size > 0) {
+        try {
+            const input = new Input({ source: new BlobSource(sourceBlob), formats: ALL_FORMATS });
+            const tracks = await input.getVideoTracks();
+            if (tracks.length > 0 && (await tracks[0].canDecode())) {
+                const sink = new VideoSampleSink(tracks[0]);
+                sinks.set("source", { sink, input });
+            }
+        } catch (e) {
+            console.warn("WebCodecs VideoSampleSink initialization failed, falling back to video element:", e);
+        }
+    } else if (hasMultipleClips && clipBlobs) {
+        for (const [id, blob] of clipBlobs.entries()) {
+            try {
+                const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS });
+                const tracks = await input.getVideoTracks();
+                if (tracks.length > 0 && (await tracks[0].canDecode())) {
+                    const sink = new VideoSampleSink(tracks[0]);
+                    sinks.set(id, { sink, input });
+                }
+            } catch (e) {
+                console.warn(`WebCodecs sink init failed for clip ${id}:`, e);
+            }
+        }
+    }
+
+    // 3. Choose Target (Direct to disk or RAM buffer)
+    let target: StreamTarget | BufferTarget;
+    let isDirectToDisk = false;
+    try {
+        const fileHandle = await window.showSaveFilePicker({
+            suggestedName: `openvid-${width}x${height}.mp4`,
+            types: [{ description: 'Video MP4', accept: { 'video/mp4': ['.mp4'] } }],
+        });
+        const writableStream = await fileHandle.createWritable();
+        target = new StreamTarget(writableStream);
+        isDirectToDisk = true;
+    } catch (error) {
+        target = new BufferTarget();
+    }
 
     const runEncodingPass = async (
         acceleration: "prefer-hardware" | "prefer-software",
+        passTarget: StreamTarget | BufferTarget,
     ): Promise<Output> => {
         const passOutput = new Output({
             format: new Mp4OutputFormat({ fastStart: "in-memory" }),
-            target: new BufferTarget(),
+            target: passTarget,
         });
+
         const videoSource = new CanvasSource(canvas, {
             codec: "avc",
             bitrate: bitrate,
             bitrateMode: "variable",
-            latencyMode: "realtime",
+            latencyMode: "quality",
             keyFrameInterval: fps * 2,
             fullCodecString: "avc1.640033",
             hardwareAcceleration: acceleration,
         });
         passOutput.addVideoTrack(videoSource, { frameRate: fps });
-        await passOutput.start();
+
+        if (mixedAudioBuffer) {
+            const audioSource = new AudioBufferSource({
+                codec: "aac",
+                bitrate: 192000,
+            });
+            passOutput.addAudioTrack(audioSource);
+            await passOutput.start();
+            await audioSource.add(mixedAudioBuffer);
+        } else {
+            await passOutput.start();
+        }
 
         video.pause();
         let currentClipId: string | null = null;
         let currentClipBlobUrl: string | null = null;
 
         const loadClipBlob = async (blob: Blob): Promise<void> => {
-            if (currentClipBlobUrl) {
-                URL.revokeObjectURL(currentClipBlobUrl);
-            }
+            if (currentClipBlobUrl) URL.revokeObjectURL(currentClipBlobUrl);
             const blobUrl = URL.createObjectURL(blob);
             currentClipBlobUrl = blobUrl;
             video.pause();
@@ -498,45 +551,94 @@ async function exportWithMediabunnyAndAudio(
         };
 
         try {
-            if (hasMultipleClips && clips.length > 0) {
-                const sortedClips = [...clips].sort((a, b) => a.startTime - b.startTime);
-                const firstClip = sortedClips[0];
-                if (firstClip && clipBlobs) {
-                    const blob = clipBlobs.get(firstClip.libraryVideoId);
-                    if (blob) {
-                        await loadClipBlob(blob);
-                        currentClipId = firstClip.id;
+            if (sinks.size === 0) {
+                if (hasMultipleClips && clips.length > 0) {
+                    const sortedClips = [...clips].sort((a, b) => a.startTime - b.startTime);
+                    const firstClip = sortedClips[0];
+                    if (firstClip && clipBlobs) {
+                        const blob = clipBlobs.get(firstClip.libraryVideoId);
+                        if (blob) {
+                            await loadClipBlob(blob);
+                            currentClipId = firstClip.id;
+                        }
                     }
+                    video.currentTime = clips[0]?.trimStart || 0;
+                } else {
+                    video.currentTime = sourceTrimStart;
                 }
-                video.currentTime = clips[0]?.trimStart || 0;
-            } else {
-                video.currentTime = sourceTrimStart;
+                await waitForVideoFrame(video);
             }
-            await waitForVideoFrame(video);
 
             const lockedWidth = canvas.width;
             const lockedHeight = canvas.height;
 
+            // Stream generator for single source video with double-buffered GPU prefetching
+            const sourceSinkObj = sinks.get("source");
+            let singleSampleStream: AsyncGenerator<VideoSample | null, void, unknown> | null = null;
+            let nextSamplePromise: Promise<IteratorResult<VideoSample | null, void>> | null = null;
+
+            if (sourceSinkObj && !hasMultipleClips) {
+                const timestamps = Array.from({ length: totalFrames }, (_, i) => {
+                    const offset = Math.min((i / fps) * speed, duration - 0.001);
+                    return sourceTrimStart + offset;
+                });
+                singleSampleStream = sourceSinkObj.sink.samplesAtTimestamps(timestamps);
+                nextSamplePromise = singleSampleStream.next();
+            }
+
+            const startTime = performance.now();
+            let lastProgressTime = 0;
+            let smoothedFps = fps;
+
             for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
-                if (cancellation.cancelled) throw new Error("Export cancelled");
+                if (cancellation.cancelled) {
+                    await passOutput.cancel();
+                    throw new Error("Export cancelled");
+                }
+
                 const outputTime = frameIndex / fps;
                 const contentOffset = Math.min(outputTime * speed, duration - 0.001);
                 const timelineTime = trimStart + contentOffset;
 
-                if (hasMultipleClips && clipBlobs) {
+                let sample: VideoSample | null = null;
+                let frameOverride: VideoFrame | undefined = undefined;
+
+                if (nextSamplePromise) {
+                    const nextItem = await nextSamplePromise;
+                    sample = nextItem.done ? null : nextItem.value;
+                    if (sample) {
+                        frameOverride = sample.toVideoFrame();
+                    }
+                    if (singleSampleStream && frameIndex + 1 < totalFrames) {
+                        nextSamplePromise = singleSampleStream.next();
+                    } else {
+                        nextSamplePromise = null;
+                    }
+                } else if (hasMultipleClips && clipBlobs) {
                     const activeClipInfo = getActiveClipAtTime(clips, timelineTime);
                     if (activeClipInfo) {
                         const { clip, clipTime } = activeClipInfo;
-                        if (clip.id !== currentClipId) {
-                            const newBlob = clipBlobs.get(clip.libraryVideoId);
-                            if (newBlob) {
-                                await loadClipBlob(newBlob);
-                                currentClipId = clip.id;
+                        const clipSinkObj = sinks.get(clip.libraryVideoId);
+                        if (clipSinkObj) {
+                            sample = await clipSinkObj.sink.getSample(clipTime);
+                            if (sample) {
+                                frameOverride = sample.toVideoFrame();
                             }
+                        } else {
+                            if (clip.id !== currentClipId) {
+                                const newBlob = clipBlobs.get(clip.libraryVideoId);
+                                if (newBlob) {
+                                    await loadClipBlob(newBlob);
+                                    currentClipId = clip.id;
+                                }
+                            }
+                            video.currentTime = clipTime;
+                            await waitForVideoFrame(video);
                         }
-                        video.currentTime = clipTime;
-                        await waitForVideoFrame(video);
                     }
+                } else {
+                    video.currentTime = sourceTrimStart + contentOffset;
+                    await waitForVideoFrame(video);
                 }
 
                 if (canvas.width !== lockedWidth || canvas.height !== lockedHeight) {
@@ -544,33 +646,39 @@ async function exportWithMediabunnyAndAudio(
                     canvas.height = lockedHeight;
                 }
 
-                await canvasHandle.drawFrame(true, timelineTime);
+                await canvasHandle.drawFrame(true, timelineTime, frameOverride);
 
-                let nextFrameReady: Promise<void> | null = null;
-                if (!hasMultipleClips) {
-                    const nextFrame = frameIndex + 1;
-                    if (nextFrame < totalFrames) {
-                        const nextContentOffset = Math.min((nextFrame / fps) * speed, duration - 0.001);
-                        video.currentTime = sourceTrimStart + nextContentOffset;
-                        nextFrameReady = waitForVideoFrame(video);
-                    }
+                if (frameOverride) {
+                    frameOverride.close();
+                }
+                if (sample) {
+                    sample.close();
                 }
 
                 await videoSource.add(outputTime, frameDuration);
 
-                if (frameIndex % 10 === 0 || frameIndex === totalFrames - 1) {
-                    const progress = 5 + Math.round((frameIndex / totalFrames) * 50);
+                const now = performance.now();
+                const elapsedSec = (now - startTime) / 1000;
+                const framesDone = frameIndex + 1;
+                const instantFps = elapsedSec > 0 ? framesDone / elapsedSec : fps;
+                smoothedFps = smoothedFps * 0.85 + instantFps * 0.15;
+                const speedMultiplier = Number((smoothedFps / fps).toFixed(1));
+                const remainingFrames = totalFrames - framesDone;
+                const etaSeconds = Math.max(0, Math.ceil(remainingFrames / Math.max(1, smoothedFps)));
+
+                if (now - lastProgressTime > 120 || frameIndex === totalFrames - 1) {
+                    lastProgressTime = now;
+                    const progress = 5 + Math.round((frameIndex / totalFrames) * 90);
                     setProgress({
                         status: "encoding",
                         progress,
-                        message: hasMultipleClips
-                            ? `Encoding clips ${frameIndex + 1}/${totalFrames}...`
-                            : `Encoding video ${frameIndex + 1}/${totalFrames}...`,
+                        message: `Encoding frame ${framesDone}/${totalFrames} (${fps}fps)...`,
+                        fpsCurrent: Math.round(smoothedFps),
+                        speedMultiplier,
+                        etaSeconds,
+                        currentFrame: framesDone,
+                        totalFrames,
                     });
-                }
-
-                if (nextFrameReady) {
-                    await nextFrameReady;
                 }
             }
         } finally {
@@ -584,258 +692,44 @@ async function exportWithMediabunnyAndAudio(
     };
 
     let output: Output;
+    let usedDirectToDisk = isDirectToDisk;
     try {
-        output = await runEncodingPass("prefer-hardware");
+        output = await runEncodingPass("prefer-hardware", target);
     } catch (error) {
-        if (cancellation.cancelled) {
-            throw error;
-        }
-        console.warn("Hardware-accelerated encoding failed mid-export. Retrying with software encoding.", error);
-        output = await runEncodingPass("prefer-software");
+        if (cancellation.cancelled) throw error;
+        console.warn("Hardware encoding failed. Retrying with software encoding...", error);
+        const retryTarget = new BufferTarget();
+        usedDirectToDisk = false;
+        output = await runEncodingPass("prefer-software", retryTarget);
     }
 
     if (cancellation.cancelled) throw new Error("Export cancelled");
 
     setProgress({
         status: "finalizing",
-        progress: 56,
-        message: "Finalizing video...",
+        progress: 96,
+        message: "Finalizing MP4 file...",
     });
     await output.finalize();
-    const buffer = (output.target as BufferTarget).buffer;
-    if (!buffer) throw new Error("Failed to generate the video file");
-    const videoBlob = new Blob([buffer], { type: "video/mp4" });
 
-    if (!needsAudioMixing) {
-        downloadBlob(videoBlob, `openvid-${width}x${height}.mp4`);
-        setProgress({ status: "complete", progress: 100, message: "Export complete!" });
-        return;
-    }
+    playExportCompleteChime();
 
-    const audioClips = (hasOriginalAudio && hasMultipleClips && clipBlobs)
-        ? clips.filter(clip =>
-            (!clipAudioStates || clipAudioStates[clip.libraryVideoId] !== false) &&
-            clipBlobs.has(clip.libraryVideoId)
-        )
-        : [];
-
-    const sourceBlob = (hasOriginalAudio && !hasMultipleClips) ? settings.videoBlob : undefined;
-    const hasUsableSourceBlob = !!(sourceBlob && sourceBlob.size > 0);
-    const hasUsableMultiClipAudio = audioClips.length > 0;
-    const hasUsableAudioTracks = !!(settings.audioTracks && settings.audioTracks.some(t => t.audioUrl));
-
-    if (!hasUsableSourceBlob && !hasUsableMultiClipAudio && !hasUsableAudioTracks) {
-        downloadBlob(videoBlob, `openvid-${width}x${height}.mp4`);
-        setProgress({ status: "complete", progress: 100, message: "Export complete!" });
-        return;
-    }
-
-    try {
+    if (usedDirectToDisk) {
         setProgress({
-            status: "finalizing",
-            progress: 60,
-            message: "Initializing audio engine...",
+            status: "complete",
+            progress: 100,
+            message: "Direct to disk export completed!",
         });
-
-        const ffmpeg = ffmpegLoadPromise ? await ffmpegLoadPromise : new FFmpeg();
-        const videoData = new Uint8Array(await videoBlob.arrayBuffer());
-        await ffmpeg.writeFile("video.mp4", videoData);
-
-        let hasSourceAudio = false;
-        const clipAudioFiles: { clip: (typeof clips)[0]; filename: string }[] = [];
-
-        if (hasOriginalAudio && hasMultipleClips && audioClips.length > 0 && clipBlobs) {
-            for (let i = 0; i < audioClips.length; i++) {
-                const clip = audioClips[i];
-                const blob = clipBlobs.get(clip.libraryVideoId);
-                if (!blob) continue;
-                const filename = `clip_audio_${i}.mp4`;
-                try {
-                    const clipData = new Uint8Array(await blob.arrayBuffer());
-                    await ffmpeg.writeFile(filename, clipData);
-                    try {
-                        await ffmpeg.exec(["-i", filename, "-vn", "-t", "0.1", "-f", "null", "-"], 30000);
-                        clipAudioFiles.push({ clip, filename });
-                    } catch {
-                        await ffmpeg.deleteFile(filename).catch(() => { });
-                    }
-                } catch (e) {
-                    console.warn(`Could not load clip audio ${i}:`, e);
-                }
-            }
-            hasSourceAudio = clipAudioFiles.length > 0;
-        } else if (hasOriginalAudio && !hasMultipleClips && hasUsableSourceBlob) {
-            try {
-                const originalVideoData = new Uint8Array(await sourceBlob!.arrayBuffer());
-                await ffmpeg.writeFile("original.mp4", originalVideoData);
-                try {
-                    await ffmpeg.exec(["-i", "original.mp4", "-vn", "-t", "0.1", "-f", "null", "-"], 30000);
-                    hasSourceAudio = true;
-                } catch {
-                    hasSourceAudio = false;
-                    await ffmpeg.deleteFile("original.mp4").catch(() => { });
-                }
-            } catch (e) {
-                console.warn("Could not read video blob for audio:", e);
-                hasSourceAudio = false;
-            }
-        }
-
-        const audioTracks: { index: number; filename: string; track: NonNullable<typeof settings.audioTracks>[0]; audioData?: Uint8Array }[] = [];
-        if (settings.audioTracks && settings.audioTracks.length > 0) {
-            const fetchResults = await Promise.all(
-                settings.audioTracks.map(async (track, i) => {
-                    if (!track.audioUrl) return null;
-                    try {
-                        const response = await fetch(track.audioUrl);
-                        const audioData = new Uint8Array(await response.arrayBuffer());
-                        return { index: i, filename: `audio${i}.mp3`, track, audioData };
-                    } catch (e) {
-                        console.warn(`Could not load audio track ${i}:`, e);
-                        return null;
-                    }
-                })
-            );
-            for (const result of fetchResults) {
-                if (!result) continue;
-                await ffmpeg.writeFile(result.filename, result.audioData!);
-                audioTracks.push({ index: result.index, filename: result.filename, track: result.track });
-            }
-        }
-
+    } else {
+        const buffer = (output.target as BufferTarget).buffer;
+        if (!buffer) throw new Error("Failed to generate the MP4 file");
+        const blob = new Blob([buffer], { type: "video/mp4" });
+        downloadBlob(blob, `openvid-${width}x${height}.mp4`);
         setProgress({
-            status: "finalizing",
-            progress: 70,
-            message: "Mixing audio...",
+            status: "complete",
+            progress: 100,
+            message: "Export completed!",
         });
-
-        const ffmpegArgs: string[] = ["-i", "video.mp4"];
-
-        if (hasSourceAudio) {
-            if (hasMultipleClips && clipAudioFiles.length > 0) {
-                for (const { clip, filename } of clipAudioFiles) {
-                    const clipTrimmedDuration = clip.trimEnd - clip.trimStart;
-                    ffmpegArgs.push("-ss", String(clip.trimStart), "-t", String(clipTrimmedDuration), "-i", filename);
-                }
-            } else {
-                ffmpegArgs.push("-ss", String(sourceTrimStart), "-t", String(duration), "-i", "original.mp4");
-            }
-        }
-
-        for (const audioTrackFile of audioTracks) {
-            ffmpegArgs.push("-i", audioTrackFile.filename);
-        }
-
-        const audioInputs: string[] = [];
-        let filterComplex = "";
-        let inputIndex = 1;
-        const tempoChain = buildAtempoChain(speed);
-
-        if (hasSourceAudio) {
-            const volume = settings.masterVolume ?? 1;
-            if (hasMultipleClips && clipAudioFiles.length > 0) {
-                for (const { clip } of clipAudioFiles) {
-                    const delayMs = Math.round((clip.startTime / speed) * 1000);
-                    filterComplex += `[${inputIndex}:a]${tempoChain},adelay=${delayMs}|${delayMs},volume=${volume}[a${inputIndex}];`;
-                    audioInputs.push(`[a${inputIndex}]`);
-                    inputIndex++;
-                }
-            } else {
-                filterComplex += `[${inputIndex}:a]${tempoChain},volume=${volume}[a${inputIndex}];`;
-                audioInputs.push(`[a${inputIndex}]`);
-                inputIndex++;
-            }
-        }
-
-        for (const audioTrackFile of audioTracks) {
-            const { track } = audioTrackFile;
-            const trackVolume = track.volume * (settings.masterVolume ?? 1);
-            const delayMs = Math.round((track.startTime / speed) * 1000);
-            const audioTrimStart = track.trimStart ?? 0;
-            const audioTrimEnd = audioTrimStart + track.duration;
-            filterComplex += `[${inputIndex}:a]atrim=${audioTrimStart}:${audioTrimEnd},asetpts=PTS-STARTPTS,${tempoChain},adelay=${delayMs}|${delayMs},volume=${trackVolume}[a${inputIndex}];`;
-            audioInputs.push(`[a${inputIndex}]`);
-            inputIndex++;
-        }
-
-        const totalAudioInputs = audioInputs.length;
-
-        if (totalAudioInputs === 0) {
-            downloadBlob(videoBlob, `openvid-${width}x${height}.mp4`);
-            setProgress({ status: "complete", progress: 100, message: "Export complete!" });
-            return;
-        } else if (audioInputs.length > 0) {
-            filterComplex += `${audioInputs.join("")}amix=inputs=${audioInputs.length}:duration=longest:dropout_transition=0:normalize=0,atrim=0:${outputDuration.toFixed(3)},asetpts=PTS-STARTPTS[aout]`;
-            ffmpegArgs.push("-filter_complex", filterComplex);
-            ffmpegArgs.push("-map", "0:v", "-map", "[aout]");
-            ffmpegArgs.push(
-                "-c:v", "copy",
-                "-c:a", "aac",
-                "-b:a", "192k",
-                "-threads", "0",
-                "-t", outputDuration.toFixed(3),
-                "output.mp4"
-            );
-        } else {
-            ffmpegArgs.push("-c:v", "copy", "-an", "output.mp4");
-        }
-
-        let progressListener: ((e: { progress: number }) => void) | null = null;
-        progressListener = ({ progress }) => {
-            const p = (typeof progress === "number" && !isNaN(progress)) ? progress : 0;
-            const mixProgress = 70 + Math.round(p * 25);
-            setProgress({
-                status: "finalizing",
-                progress: Math.min(mixProgress, 95),
-                message: p > 0 ? `Processing audio... ${Math.round(p * 100)}%` : "Mixing audio...",
-            });
-        };
-        ffmpeg.on("progress", progressListener);
-
-        const audioAbortController = new AbortController();
-        const cancellationCheck = setInterval(() => {
-            if (cancellation.cancelled) audioAbortController.abort();
-        }, 500);
-
-        try {
-            await ffmpeg.exec(ffmpegArgs, 600000, { signal: audioAbortController.signal });
-        } catch (e) {
-            if (cancellation.cancelled) throw new Error("Export cancelled");
-            console.error("FFmpeg audio mixing failed:", e);
-            downloadBlob(videoBlob, `openvid-${width}x${height}.mp4`);
-            setProgress({ status: "complete", progress: 100, message: "Export complete (without audio mixing)!" });
-            return;
-        } finally {
-            clearInterval(cancellationCheck);
-            if (progressListener) ffmpeg.off("progress", progressListener);
-        }
-
-        setProgress({ status: "finalizing", progress: 96, message: "Preparing download..." });
-
-        const outputData = (await ffmpeg.readFile("output.mp4")) as Uint8Array;
-        const outputBlob = new Blob([new Uint8Array(outputData)], { type: "video/mp4" });
-
-        downloadBlob(outputBlob, `openvid-${width}x${height}.mp4`);
-        setProgress({ status: "complete", progress: 100, message: "Export with audio complete!" });
-
-        (async () => {
-            try {
-                await ffmpeg.deleteFile("video.mp4");
-                await ffmpeg.deleteFile("output.mp4");
-                if (hasSourceAudio && !hasMultipleClips) await ffmpeg.deleteFile("original.mp4");
-                for (const { filename } of clipAudioFiles) {
-                    await ffmpeg.deleteFile(filename).catch(() => { });
-                }
-                for (const audioTrackFile of audioTracks) {
-                    await ffmpeg.deleteFile(audioTrackFile.filename);
-                }
-            } catch { }
-        })();
-    } catch (ffmpegError) {
-        if (cancellation.cancelled) throw new Error("Export cancelled");
-        console.warn("FFmpeg audio processing failed, exporting video only:", ffmpegError);
-        downloadBlob(videoBlob, `openvid-${width}x${height}.mp4`);
-        setProgress({ status: "complete", progress: 100, message: "Export complete (without audio)!" });
     }
 }
 
@@ -990,10 +884,10 @@ async function exportWithFFmpegWebM(
         }
 
         const blob = await new Promise<Blob>((resolve, reject) =>
-            canvas.toBlob(b => b ? resolve(b) : reject(), "image/png")
+            canvas.toBlob(b => b ? resolve(b) : reject(), "image/webp", 0.95)
         );
         const data = new Uint8Array(await blob.arrayBuffer());
-        await ffmpeg.writeFile(`frame${String(i).padStart(5, "0")}.png`, data);
+        await ffmpeg.writeFile(`frame${String(i).padStart(5, "0")}.webp`, data);
 
         if (i % 10 === 0 || i === totalFrames - 1) {
             setProgress({
@@ -1025,17 +919,17 @@ async function exportWithFFmpegWebM(
         await ffmpeg.exec([
             "-f", "image2",
             "-framerate", String(fps),
-            "-i", "frame%05d.png",
+            "-i", "frame%05d.webp",
             "-c:v", "libvpx",
             "-auto-alt-ref", "0",
-            "-b:v", "1M",
+            "-b:v", "2M",
             "-vf", "format=yuva420p",
             "output.webm",
         ]);
     } finally {
         try {
             for (let i = 0; i < totalFrames; i++) {
-                await ffmpeg.deleteFile(`frame${String(i).padStart(5, "0")}.png`);
+                await ffmpeg.deleteFile(`frame${String(i).padStart(5, "0")}.webp`);
             }
         } catch { }
     }

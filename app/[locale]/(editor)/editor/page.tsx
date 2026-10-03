@@ -1061,12 +1061,14 @@ export default function Editor() {
         if (videoRef.current) {
             videoRef.current.pause();
         }
-        setIsPlaying(false);
+        const activeClipBlob = videoClips.length > 0 ? videoBlobsRef.current.get(videoClips[0].libraryVideoId) : undefined;
+        const resolvedBlob = videoBlob || activeClipBlob;
+
         exportVideo({
             quality,
             fps,
             bitrate,
-            videoBlob: videoBlob ?? undefined,
+            videoBlob: resolvedBlob,
             transparentBackground: selectedWallpaper === -1,
             trim: trimRange.end > trimRange.start ? { start: trimRange.start, end: trimRange.end } : undefined,
             muteOriginalAudio,
@@ -1084,7 +1086,7 @@ export default function Editor() {
             }),
             masterVolume,
             videoClips: videoClips.length > 0 ? videoClips : undefined,
-            videoClipBlobs: videoClips.length > 1 ? videoBlobsRef.current : undefined,
+            videoClipBlobs: videoBlobsRef.current.size > 0 ? videoBlobsRef.current : undefined,
             clipAudioStates: Object.fromEntries(clipAudioStateRef.current),
             speed: globalSpeed,
         }).finally(() => {

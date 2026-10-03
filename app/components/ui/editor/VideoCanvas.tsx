@@ -36,6 +36,7 @@ import { drawPhone3DCompositeWithZoom, type Phone3DCompositeContext } from "@/li
 import { buildMockupMotionCss, MockupMotionTransform, REST_MOCKUP_MOTION, sampleCombinedMockupMotion, sampleCombined3DMotion, REST_MOCKUP_3D_MOTION, Mockup3DMotionTransform, MOTION_PRESET_3D_IDS } from "@/lib/mockup-motion";
 import { filterVisibleElements } from "@/lib/canvas-elements-timeline.utils";
 import { ZoomPointOverlay, ZOOM_POINT_VISUAL_SCALE } from "@/components/ui/ZoomPointOverlay";
+import { globalLayerCache } from "@/lib/dsa/layer-cache";
 
 export type { VideoCanvasHandle, VideoCanvasProps };
 
@@ -1334,18 +1335,36 @@ function VideoCanvasInner({
     };
 
     // Function to draw a frame on the export canvas
-    const drawFrame = async (highQuality: boolean = true, explicitTimelineTime?: number) => {
+    const drawFrame = async (highQuality: boolean = true, explicitTimelineTime?: number, frameOverride?: CanvasImageSource | VideoFrame) => {
         const canvas = exportCanvasRef.current;
         const canvasCtxOptions: CanvasRenderingContext2DSettings = { alpha: true, colorSpace: 'srgb', desynchronized: false, willReadFrequently: false };
         const ctx = canvas?.getContext('2d', canvasCtxOptions);
         const video = videoRef.current;
         const image = imageRef?.current;
-        const mediaSource = mediaType === "image" ? image : video;
+        const mediaSource = frameOverride || (mediaType === "image" ? image : video);
 
         if (!canvas || !ctx || !mediaSource) return;
 
-        const sourceWidth = mediaType === "image" ? (image?.naturalWidth ?? 0) : (video?.videoWidth ?? 0);
-        const sourceHeight = mediaType === "image" ? (image?.naturalHeight ?? 0) : (video?.videoHeight ?? 0);
+        let sourceWidth = 0;
+        let sourceHeight = 0;
+        if (frameOverride) {
+            if ('displayWidth' in frameOverride) {
+                sourceWidth = (frameOverride as VideoFrame).displayWidth;
+                sourceHeight = (frameOverride as VideoFrame).displayHeight;
+            } else if ('videoWidth' in frameOverride) {
+                sourceWidth = (frameOverride as HTMLVideoElement).videoWidth;
+                sourceHeight = (frameOverride as HTMLVideoElement).videoHeight;
+            } else if ('width' in frameOverride) {
+                sourceWidth = (frameOverride as HTMLCanvasElement).width;
+                sourceHeight = (frameOverride as HTMLCanvasElement).height;
+            }
+        } else if (mediaType === "image") {
+            sourceWidth = image?.naturalWidth ?? 0;
+            sourceHeight = image?.naturalHeight ?? 0;
+        } else {
+            sourceWidth = video?.videoWidth ?? 0;
+            sourceHeight = video?.videoHeight ?? 0;
+        }
         if (sourceWidth === 0 || sourceHeight === 0) return;
 
         ctx.imageSmoothingEnabled = true;
@@ -1404,20 +1423,29 @@ function VideoCanvasInner({
         const zoomCenterY = canvasHeight / 2;
         const backgroundImage = (shouldShowCustomImage || shouldShowUnsplashOverride) ? customImageRef.current : (shouldShowWallpaper ? wallpaperImageRef.current : null);
 
-        // Shared helper: draw background into any 2D context
+        // Shared helper: draw background into any 2D context using DSA layer memoization
         const drawBg = (c: CanvasRenderingContext2D) => {
             if (shouldShowCustomColor && backgroundColorCss) {
-                applyCanvasBackground(c, backgroundColorCss, canvasWidth, canvasHeight);
+                const cacheKey = `bg_color_${backgroundColorCss}_${canvasWidth}x${canvasHeight}`;
+                const cached = globalLayerCache.getOrCreate(cacheKey, canvasWidth, canvasHeight, (layerCtx) => {
+                    applyCanvasBackground(layerCtx as CanvasRenderingContext2D, backgroundColorCss, canvasWidth, canvasHeight);
+                });
+                c.drawImage(cached as CanvasImageSource, 0, 0);
             } else if (backgroundImage) {
-                c.save();
-                if (backgroundBlur > 0) {
-                    c.filter = `blur(${backgroundBlur * 0.8}px)`;
-                    const overflow = backgroundBlur * 2;
-                    drawImageCover(c, backgroundImage, -overflow, -overflow, canvasWidth + overflow * 2, canvasHeight + overflow * 2);
-                } else {
-                    drawImageCover(c, backgroundImage, 0, 0, canvasWidth, canvasHeight);
-                }
-                c.restore();
+                const imgIdentifier = backgroundImage.src || (backgroundImage as HTMLImageElement).currentSrc || "img";
+                const cacheKey = `bg_img_${imgIdentifier}_blur${backgroundBlur}_${canvasWidth}x${canvasHeight}`;
+                const cached = globalLayerCache.getOrCreate(cacheKey, canvasWidth, canvasHeight, (layerCtx) => {
+                    layerCtx.save();
+                    if (backgroundBlur > 0) {
+                        layerCtx.filter = `blur(${backgroundBlur * 0.8}px)`;
+                        const overflow = backgroundBlur * 2;
+                        drawImageCover(layerCtx as CanvasRenderingContext2D, backgroundImage, -overflow, -overflow, canvasWidth + overflow * 2, canvasHeight + overflow * 2);
+                    } else {
+                        drawImageCover(layerCtx as CanvasRenderingContext2D, backgroundImage, 0, 0, canvasWidth, canvasHeight);
+                    }
+                    layerCtx.restore();
+                });
+                c.drawImage(cached as CanvasImageSource, 0, 0);
             }
         };
 
@@ -1664,7 +1692,7 @@ function VideoCanvasInner({
             fgCtx.save();
             fgCtx.translate(fgOffsetX, fgOffsetY);
             if (!imagePhoneActive) {
-                drawMockupAndMedia(fgCtx, containerX, containerY, containerWidth, containerHeight, video!, false, true, mockupDrawCtx);
+                drawMockupAndMedia(fgCtx, containerX, containerY, containerWidth, containerHeight, mediaSource as any, false, true, mockupDrawCtx);
             }
             fgCtx.restore();
 
@@ -1703,7 +1731,7 @@ function VideoCanvasInner({
                     vlCtx.imageSmoothingEnabled = true;
                     vlCtx.imageSmoothingQuality = 'high';
                     if (!imagePhoneActive) {
-                        drawMockupAndMedia(vlCtx, containerX, containerY, containerWidth, containerHeight, video!, false, false, mockupDrawCtx);
+                        drawMockupAndMedia(vlCtx, containerX, containerY, containerWidth, containerHeight, mediaSource as any, false, false, mockupDrawCtx);
                     }
 
                     const vm = videoMaskConfig!;
@@ -1797,7 +1825,7 @@ function VideoCanvasInner({
                 ctx.save();
                 applyVideoZoom(ctx);
                 if (!imagePhoneActive) {
-                    drawMockupAndMedia(ctx, containerX, containerY, containerWidth, containerHeight, video!, false, false, mockupDrawCtx);
+                    drawMockupAndMedia(ctx, containerX, containerY, containerWidth, containerHeight, mediaSource as any, false, false, mockupDrawCtx);
                 }
                 ctx.restore();
 

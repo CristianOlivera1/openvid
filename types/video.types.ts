@@ -36,6 +36,12 @@ export interface ExportProgress {
     status: "idle" | "preparing" | "encoding" | "finalizing" | "complete" | "error";
     progress: number;
     message: string;
+    step?: "capturing" | "encoding" | "encodingWebM" | "preparing" | "finalizing";
+    fpsCurrent?: number;
+    speedMultiplier?: number;
+    etaSeconds?: number;
+    currentFrame?: number;
+    totalFrames?: number;
 }
 
 export interface QualitySettings {

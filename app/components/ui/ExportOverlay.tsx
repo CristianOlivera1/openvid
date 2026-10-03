@@ -5,13 +5,9 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@iconify/react";
 import { useTranslations } from "next-intl";
+import type { ExportProgress } from "@/types";
 
-export interface ExportProgress {
-    status: "idle" | "preparing" | "encoding" | "finalizing" | "complete" | "error";
-    progress: number;
-    message: string;
-    step?: "capturing" | "encoding" | "encodingWebM" | "preparing" | "finalizing";
-}
+export type { ExportProgress };
 
 interface ExportOverlayProps {
     exportProgress: ExportProgress;
@@ -112,7 +108,7 @@ export function ExportOverlay({
                     </h2>
                 </div>
 
-                <div className="relative w-full h-1.5 bg-muted rounded-full overflow-hidden mb-10">
+                <div className="relative w-full h-1.5 bg-muted rounded-full overflow-hidden mb-8">
                     <div
                         className="absolute inset-0 bg-foreground origin-left transition-transform duration-300 ease-out shadow-[0_0_15px_rgba(255,255,255,0.5)]"
                         style={{
@@ -120,6 +116,31 @@ export function ExportOverlay({
                         }}
                     />
                 </div>
+
+                {(exportProgress.speedMultiplier || exportProgress.fpsCurrent || exportProgress.etaSeconds !== undefined) && (
+                    <div className="flex items-center justify-between gap-2 p-3 mb-8 bg-muted/70 dark:bg-muted/40 border border-border/80 rounded-2xl text-[12px] font-mono">
+                        {exportProgress.speedMultiplier ? (
+                            <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-semibold">
+                                <Icon icon="lucide:zap" width="14" />
+                                <span>{exportProgress.speedMultiplier}x ({exportProgress.fpsCurrent} FPS)</span>
+                            </div>
+                        ) : null}
+
+                        {exportProgress.currentFrame && exportProgress.totalFrames ? (
+                            <div className="flex items-center gap-1 text-muted-foreground/80">
+                                <Icon icon="lucide:film" width="13" />
+                                <span>{exportProgress.currentFrame}/{exportProgress.totalFrames}</span>
+                            </div>
+                        ) : null}
+
+                        {exportProgress.etaSeconds !== undefined && exportProgress.etaSeconds >= 0 ? (
+                            <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                                <Icon icon="lucide:clock" width="13" />
+                                <span>ETA: {exportProgress.etaSeconds}s</span>
+                            </div>
+                        ) : null}
+                    </div>
+                )}
 
                 <div className="space-y-4 mb-10">
                     <div className="flex flex-col gap-2 border-l-2 border-border pl-5 py-1">
