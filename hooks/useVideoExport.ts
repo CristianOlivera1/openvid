@@ -161,6 +161,7 @@ export function useVideoExport(
                         targetWidth, targetHeight, setExportProgress, cancellationRef.current, speed, settings
                     );
                 } else {
+                    const effectiveBitrate = settings.bitrate || qualitySettings.bitrate;
                     await exportWithMediabunnyAndAudio(
                         video,
                         canvasHandle,
@@ -168,7 +169,7 @@ export function useVideoExport(
                         exportDuration,
                         trimStart,
                         fps,
-                        qualitySettings.bitrate,
+                        effectiveBitrate,
                         qualitySettings.width,
                         qualitySettings.height,
                         setExportProgress,

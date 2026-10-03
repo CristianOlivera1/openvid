@@ -23,7 +23,7 @@ interface ImageExportProgress {
 }
 
 interface EditorTopBarProps {
-    onExport: (quality: ExportQuality, fps?: number) => void;
+    onExport: (quality: ExportQuality, fps?: number, bitrate?: number) => void;
     exportProgress: ExportProgress;
     hasTransparentBackground?: boolean;
     onUndo?: () => void;

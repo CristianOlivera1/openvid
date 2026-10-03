@@ -11,6 +11,7 @@ export interface TrimSettings {
 export interface ExportSettings {
     quality: ExportQuality;
     fps?: number;
+    bitrate?: number;
     trim?: TrimSettings;
     transparentBackground?: boolean;
     muteOriginalAudio?: boolean;
