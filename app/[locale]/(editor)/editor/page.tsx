@@ -1041,7 +1041,7 @@ export default function Editor() {
     const pathname = usePathname();
     const router = useRouter();
 
-    const handleExport = useCallback((quality: ExportQuality) => {
+    const handleExport = useCallback((quality: ExportQuality, fps?: number) => {
         if (!EDITOR_WITHOUT_AUTH && !authUser) {
             savePendingExport(quality);
             router.replace({
@@ -1064,6 +1064,7 @@ export default function Editor() {
         setIsPlaying(false);
         exportVideo({
             quality,
+            fps,
             videoBlob: videoBlob ?? undefined,
             transparentBackground: selectedWallpaper === -1,
             trim: trimRange.end > trimRange.start ? { start: trimRange.start, end: trimRange.end } : undefined,
