@@ -1,8 +1,8 @@
 "use client";
 import { Device3DBoundary } from "./Device3DBoundary";
 import { IPhoneDuoScene } from "./IPhoneDuo3DViewer";
-import { Canvas } from "@react-three/fiber";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { IPhone13ProMax3DApi, IPhone13ProMaxScene } from "./IPhone13ProMax3DViewer";
 import { DoubleIPhone3DApi, DoubleIPhoneScene } from "./DoubleIPhone3DViewer";
@@ -22,14 +22,16 @@ import type { MockupCameraPose } from "@/lib/viewer-controls3d";
 import { REST_MOCKUP_3D_MOTION, type Mockup3DMotionTransform } from "@/lib/mockup-motion-3d";
 import { useFrame } from "@react-three/fiber";
 import { getMockupCameraPosition, type MockupCameraKeyframe } from "@/lib/viewer-controls3d";
+import { ExportFrameSource, ExportScreenSwapper, RenderAtWithMotion } from "@/lib/export-screen-swapper";
 
-export type Mockup3DApi =
+export type Mockup3DApi = (
   | IPhone13ProMax3DApi
   | DoubleIPhone3DApi
   | Phone3DApi
   | Laptop3DApi
   | IPhone17ProMax3DApi
-  | IPadMini63DApi;
+  | IPadMini63DApi
+) & { setExportFrame?: ExportFrameFn };
 
 export interface Mockup3DStageProps {
   imageUrl?: string | null;
@@ -38,8 +40,8 @@ export interface Mockup3DStageProps {
   initialRotationX?: number;
   initialRotationY?: number;
   initialRotationZ?: number;
-  openingProgress?: number;   // laptop / foldable phone
-  modelUrl?: string;          // solo devices genéricos (phone/iphone)
+  openingProgress?: number;
+  modelUrl?: string;
   onRotationChange?: (rx: number, ry: number) => void;
   cameraConfig?: MockupCameraConfig;
   cameraNavigationMode?: CameraNavigationMode;
@@ -61,9 +63,7 @@ export interface Mockup3DStageProps {
   isHovered?: boolean;
   onHoverChange?: (isHovered: boolean) => void;
   onSelectChange?: (isSelected: boolean) => void;
-  /** 3D motion transform applied additively to the root group every frame. */
   motionTransform?: Mockup3DMotionTransform;
-  /** External root group ref, used for export-time motion application. */
   rootRef?: React.MutableRefObject<THREE.Group | null>;
 }
 
@@ -119,8 +119,7 @@ function Motion3DApplicator({
   useFrame(() => {
     const root = rootRef.current;
     if (!root) return;
-    // Capture the base transform lazily inside useFrame in case the group
-    // mounts after the initial useEffect (R3F suspends scene children).
+    
     if (!baseRef.current) {
       baseRef.current = {
         rx: root.rotation.x,
@@ -150,6 +149,42 @@ function Motion3DApplicator({
   return null;
 }
 
+type ExportFrameFn = (src: ExportFrameSource | null) => void;
+
+function ExportScreenBridge({
+  bridgeRef,
+  cropArea,
+  videoElement,
+}: {
+  bridgeRef: React.MutableRefObject<ExportFrameFn | null>;
+  cropArea?: { x: number; y: number; width: number; height: number } | null;
+  videoElement?: HTMLVideoElement | null;
+}) {
+  const { scene, gl } = useThree();
+  const cropRef = useRef(cropArea);
+  const videoRef = useRef(videoElement);
+  useLayoutEffect(() => {
+    cropRef.current = cropArea;
+    videoRef.current = videoElement;
+  });
+
+  useEffect(() => {
+    const swapper = new ExportScreenSwapper(
+      scene,
+      () => cropRef.current,
+      () => videoRef.current,
+      gl.capabilities.getMaxAnisotropy(),
+    );
+    bridgeRef.current = (src) => swapper.setFrame(src);
+    return () => {
+      swapper.dispose();
+      bridgeRef.current = null;
+    };
+  }, [scene, gl, bridgeRef]);
+
+  return null;
+}
+
 export function Mockup3DStage(props: StageProps) {
   return <Device3DBoundary key={props.device} modelUrl={PHONE_DEVICE_URLS[props.device]}><StageContent {...props} /></Device3DBoundary>;
 }
@@ -160,6 +195,7 @@ function StageContent({ device, rootRef: externalRootRef, cameraRef: externalCam
   const rootRef = externalRootRef ?? internalRootRef;
   const cameraRef = externalCameraRef ?? internalCameraRef;
   const cameraPathRef = useRef<THREE.Group | null>(null);
+  const exportBridgeRef = useRef<ExportFrameFn | null>(null);
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
   const zoomRef = useRef(props.zoom ?? 1);
   const onApi = props.onApi;
@@ -188,9 +224,12 @@ function StageContent({ device, rootRef: externalRootRef, cameraRef: externalCam
       return;
     }
 
-    const wrappedApi = {
+    const renderBase: RenderAtWithMotion = api.renderAt;
+
+    const wrappedApi: Mockup3DApi = {
       ...api,
-      renderAt: (width: number, height: number, _motion?: Mockup3DMotionTransform, cameraPose?: MockupCameraPose) => {
+      setExportFrame: (src) => exportBridgeRef.current?.(src),
+      renderAt: (width: number, height: number, motion?: Mockup3DMotionTransform, cameraPose?: MockupCameraPose) => {
         const camera = cameraRef.current;
         const restoreCamera = camera && cameraPose
           ? applyMockupCameraPoseForRender(camera, cameraPose, device, zoomRef.current)
@@ -199,14 +238,14 @@ function StageContent({ device, rootRef: externalRootRef, cameraRef: externalCam
         const wasCameraPathVisible = cameraPath?.visible ?? false;
         if (cameraPath) cameraPath.visible = false;
         try {
-          api.renderAt(width, height);
+          renderBase(width, height, motion);
         } finally {
           if (cameraPath) cameraPath.visible = wasCameraPathVisible;
           restoreCamera?.();
         }
       },
     };
-    onApi?.(wrappedApi as Mockup3DApi);
+    onApi?.(wrappedApi);
   }, [device, onApi, cameraRef]);
 
   const handleMount = (canvas: HTMLCanvasElement) => {
@@ -236,6 +275,7 @@ function StageContent({ device, rootRef: externalRootRef, cameraRef: externalCam
           handleMount(gl.domElement);
         }}
       >
+        <ExportScreenBridge bridgeRef={exportBridgeRef} cropArea={props.cropArea} videoElement={props.videoElement} />
         <Motion3DApplicator rootRef={rootRef} motionTransform={props.motionTransform ?? REST_MOCKUP_3D_MOTION} device={device} baseRotationZ={props.initialRotationZ ?? 0} />
         {props.cameraKeyframes && props.cameraKeyframes.length > 0 && (
           <CameraPath

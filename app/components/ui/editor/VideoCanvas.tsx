@@ -33,7 +33,7 @@ import DropMedia from "@/components/ui/DropMedia";
 import { renderCanvasElements } from "@/lib/canvas-elements-render.utils";
 import { drawMaskedImage } from "@/lib/masked-image-draw.utils";
 import { drawMockupAndMedia, type MockupDrawContext } from "@/lib/mockup-media-draw.utils";
-import { drawPhone3DCompositeWithZoom, type Phone3DCompositeContext } from "@/lib/phone3d-composite-draw.utils";
+import { drawPhone3DCompositeWithZoom, Phone3DApi, type Phone3DCompositeContext } from "@/lib/phone3d-composite-draw.utils";
 import { buildMockupMotionCss, MockupMotionTransform, REST_MOCKUP_MOTION, sampleCombinedMockupMotion, sampleCombined3DMotion, REST_MOCKUP_3D_MOTION, Mockup3DMotionTransform, MOTION_PRESET_3D_IDS } from "@/lib/mockup-motion";
 import { filterVisibleElements } from "@/lib/canvas-elements-timeline.utils";
 import { ZoomPointOverlay, ZOOM_POINT_VISUAL_SCALE } from "@/components/ui/ZoomPointOverlay";
@@ -41,7 +41,6 @@ import {
     DEFAULT_MOCKUP_CAMERA_FOV,
     sampleMockupCameraKeyframes,
 } from "@/lib/viewer-controls3d";
-import type { MockupCameraKeyframe, MockupCameraPose } from "@/lib/viewer-controls3d";
 import { normalizeCamera3DConfig, normalizeCameraZoom } from "@/types/camera.types";
 import { globalLayerCache } from "@/lib/dsa/layer-cache";
 
@@ -287,12 +286,7 @@ function VideoCanvasInner({
     const imagePhoneCanvasRef = useRef<HTMLCanvasElement | null>(null);
     // Root THREE.Group ref for applying 3D motion during export rendering.
     const imagePhoneRootRef = useRef<THREE.Group | null>(null);
-    const imagePhoneApiRef = useRef<{
-        renderAt: (w: number, h: number, motion?: Mockup3DMotionTransform, cameraPose?: MockupCameraPose) => void;
-        restorePreview: () => void;
-        hasBuiltInShadow?: boolean;
-        getVisualSize?: () => { width: number; height: number; offsetY?: number } | null; // ← offsetY
-    } | null>(null);
+    const imagePhoneApiRef = useRef<Phone3DApi | null>(null);
     const [activePhoneDevice, setActivePhoneDevice] = useState<ImageDeviceId | null>(null);
     const [phoneTransitioning, setPhoneTransitioning] = useState(false);
     const rafDragRef = useRef<number | null>(null);
@@ -1374,7 +1368,7 @@ function VideoCanvasInner({
     };
 
     // Function to draw a frame on the export canvas
-    const drawFrame = async (highQuality: boolean = true, explicitTimelineTime?: number, frameOverride?: CanvasImageSource | VideoFrame) => {
+    const drawFrameInner = async (highQuality: boolean = true, explicitTimelineTime?: number, frameOverride?: CanvasImageSource | VideoFrame) => {
         const canvas = exportCanvasRef.current;
         const canvasCtxOptions: CanvasRenderingContext2DSettings = { alpha: true, colorSpace: 'srgb', desynchronized: false, willReadFrequently: false };
         const ctx = canvas?.getContext('2d', canvasCtxOptions);
@@ -1452,10 +1446,15 @@ function VideoCanvasInner({
             effectivePhoneMaskConfig, maskCompositeCanvasRef,
             imagePhoneRootRef,
             motion3DForFrame,
+            previewMotion3D: mockup3DMotionPreview,
             cameraPoseForFrame: mediaType === "video"
                 ? sampleMockupCameraKeyframes(mockupCameraKeyframes, frameTime, DEFAULT_MOCKUP_CAMERA_FOV[imagePhoneDevice]) ?? undefined
                 : undefined,
         };
+
+        if (mediaType === "video" && imagePhoneActive) {
+            imagePhoneApiRef.current?.setExportFrame?.(mediaSource);
+        }
 
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -1886,6 +1885,16 @@ function VideoCanvasInner({
         if (showCameraOverlay) {
             const cameraConfigForFrame = sampleCameraOverlayKeyframes(cameraConfig, cameraOverlayKeyframes, frameTime);
             await drawCameraOverlayToCtx(ctx, canvasWidth, canvasHeight, cameraVideoRef.current, videoRef.current, cameraConfigForFrame);
+        }
+    };
+
+    const drawFrame = async (...args: Parameters<typeof drawFrameInner>): Promise<void> => {
+        try {
+            await drawFrameInner(...args);
+        } finally {
+            if (mediaType === "video" && imagePhoneActive) {
+                imagePhoneApiRef.current?.setExportFrame?.(null);
+            }
         }
     };
 
