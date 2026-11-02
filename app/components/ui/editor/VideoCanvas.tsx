@@ -1733,7 +1733,7 @@ function VideoCanvasInner({
             fgCtx.save();
             fgCtx.translate(fgOffsetX, fgOffsetY);
             if (!imagePhoneActive) {
-                drawMockupAndMedia(fgCtx, containerX, containerY, containerWidth, containerHeight, mediaSource as any, false, true, mockupDrawCtx);
+                drawMockupAndMedia(fgCtx, containerX, containerY, containerWidth, containerHeight, mediaSource, false, true, mockupDrawCtx);
             }
             fgCtx.restore();
 
@@ -1772,7 +1772,7 @@ function VideoCanvasInner({
                     vlCtx.imageSmoothingEnabled = true;
                     vlCtx.imageSmoothingQuality = 'high';
                     if (!imagePhoneActive) {
-                        drawMockupAndMedia(vlCtx, containerX, containerY, containerWidth, containerHeight, mediaSource as any, false, false, mockupDrawCtx);
+                        drawMockupAndMedia(vlCtx, containerX, containerY, containerWidth, containerHeight, mediaSource, false, false, mockupDrawCtx);
                     }
 
                     const vm = videoMaskConfig!;
@@ -1866,7 +1866,7 @@ function VideoCanvasInner({
                 ctx.save();
                 applyVideoZoom(ctx);
                 if (!imagePhoneActive) {
-                    drawMockupAndMedia(ctx, containerX, containerY, containerWidth, containerHeight, mediaSource as any, false, false, mockupDrawCtx);
+                    drawMockupAndMedia(ctx, containerX, containerY, containerWidth, containerHeight, mediaSource, false, false, mockupDrawCtx);
                 }
                 ctx.restore();
 
