@@ -8,7 +8,7 @@ import { QUALITY_SETTINGS, DEFAULT_EXPORT_FPS } from "@/lib/constants";
 import { ensureVideoReady, waitForVideoFrame, downloadBlob } from "@/lib/video.utils";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { toBlobURL } from "@ffmpeg/util";
-import { blobToUint8Array, buildAtempoChain, canvasToBlobFast, getActiveClipAtTime, resolveClipTrimStart } from "@/lib/ffmpeg.utils";
+import { blobToUint8Array, canvasToBlobFast, getActiveClipAtTime, resolveClipTrimStart } from "@/lib/ffmpeg.utils";
 import type { VideoTrackClip } from "@/types/video-track.types";
 
 export type { ExportQuality, ExportSettings, ExportProgress };
