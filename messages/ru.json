@@ -953,6 +953,40 @@
     "export": {
       "button": "Экспорт",
       "title": "Качество экспорта",
+      "videoTitle": "Экспорт видео",
+      "format": "Формат",
+      "formats": {
+        "mp4": "MP4",
+        "webm": "WebM",
+        "gif": "GIF"
+      },
+      "targetBitrate": "Битрейт",
+      "social": "Соцсети",
+      "balanced": "Сбалансированный",
+      "youtube": "YouTube",
+      "maxHq": "Максимальное качество",
+      "custom": "Вручную",
+      "slider": "Настройка",
+      "customBitrate": "Пользовательский битрейт",
+      "bitrateRange": {
+        "tiny": "Низкое",
+        "highQuality": "Высокое",
+        "master": "Максимум"
+      },
+      "frameRate": "Частота кадров",
+      "frameRates": {
+        "standard": "Стандартная",
+        "ultraSmooth": "Плавное видео",
+        "highRefresh": "Высокая частота"
+      },
+      "resolution": "Разрешение",
+      "qualityTags": {
+        "recommended": "Рекомендуем",
+        "maxClarity": "Максимальная чёткость"
+      },
+      "gifTitle": "Экспорт анимированного GIF",
+      "gifDescription": "GIF экспортируется в 720p (24 кадра/с) без звука. Подходит для встраивания, GitHub и документации.",
+      "exportFormat": "Экспорт {format}",
       "recommended": "РЕКОМЕНДУЕМ",
       "noBackground": "прозрачный",
       "solidBackground": "СПЛОШНОЙ ФОН",
