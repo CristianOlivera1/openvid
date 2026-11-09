@@ -942,6 +942,40 @@
     "export": {
       "button": "Exportar",
       "title": "Calidad de exportación",
+      "videoTitle": "Exportar video",
+      "format": "Formato",
+      "formats": {
+        "mp4": "MP4",
+        "webm": "WebM",
+        "gif": "GIF"
+      },
+      "targetBitrate": "Tasa de bits",
+      "social": "Redes sociales",
+      "balanced": "Equilibrado",
+      "youtube": "YouTube",
+      "maxHq": "Máxima calidad",
+      "custom": "Personalizado",
+      "slider": "Control",
+      "customBitrate": "Tasa de bits personalizada",
+      "bitrateRange": {
+        "tiny": "Bajo",
+        "highQuality": "Alta calidad",
+        "master": "Máximo"
+      },
+      "frameRate": "Fotogramas por segundo",
+      "frameRates": {
+        "standard": "Estándar",
+        "ultraSmooth": "Muy fluido",
+        "highRefresh": "Alta frecuencia"
+      },
+      "resolution": "Resolución",
+      "qualityTags": {
+        "recommended": "Recomendado",
+        "maxClarity": "Máxima nitidez"
+      },
+      "gifTitle": "Exportar GIF animado",
+      "gifDescription": "El GIF se exporta a 720p (24 fps), sin audio. Ideal para incrustar en páginas, GitHub y documentación.",
+      "exportFormat": "Exportar {format}",
       "recommended": "RECOMENDADO",
       "noBackground": "sin fondo",
       "solidBackground": "FONDO SÓLIDO",

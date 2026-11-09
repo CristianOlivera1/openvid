@@ -986,6 +986,40 @@
     "export": {
       "button": "내보내기",
       "title": "내보내기 화질",
+      "videoTitle": "동영상 내보내기",
+      "format": "형식",
+      "formats": {
+        "mp4": "MP4",
+        "webm": "WebM",
+        "gif": "GIF"
+      },
+      "targetBitrate": "목표 비트레이트",
+      "social": "소셜",
+      "balanced": "균형",
+      "youtube": "YouTube",
+      "maxHq": "최고 화질",
+      "custom": "사용자 지정",
+      "slider": "슬라이더",
+      "customBitrate": "사용자 지정 비트레이트",
+      "bitrateRange": {
+        "tiny": "낮음",
+        "highQuality": "고화질",
+        "master": "최고"
+      },
+      "frameRate": "프레임 속도",
+      "frameRates": {
+        "standard": "표준",
+        "ultraSmooth": "매우 부드럽게",
+        "highRefresh": "높은 주사율"
+      },
+      "resolution": "해상도",
+      "qualityTags": {
+        "recommended": "추천",
+        "maxClarity": "최고 선명도"
+      },
+      "gifTitle": "애니메이션 GIF 내보내기",
+      "gifDescription": "GIF는 오디오 없이 720p(24fps)로 내보냅니다. 웹 페이지, GitHub, 문서에 삽입하기 좋습니다.",
+      "exportFormat": "{format} 내보내기",
       "recommended": "추천",
       "noBackground": "투명",
       "solidBackground": "단색 배경",
