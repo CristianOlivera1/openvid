@@ -1,4 +1,3 @@
-import { EDITOR_WITHOUT_AUTH } from "@/app/config/editor";
 import { type NextRequest, NextResponse } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 import { locales, defaultLocale } from "./i18n";
@@ -18,9 +17,7 @@ const intlMiddleware = createIntlMiddleware({
 export default async function proxy(request: NextRequest) {
   const country = request.headers.get("x-vercel-ip-country") || "UNKNOWN";
 
-  const pathname = request.nextUrl.pathname.replace(/\/$/, "");
-  const isEditor = pathname === "/editor" || locales.some((locale) => pathname === `/${locale}/editor`);
-  const needsAuth = !(EDITOR_WITHOUT_AUTH && isEditor) && shouldRefreshSession(request);
+  const needsAuth = shouldRefreshSession(request);
 
   if (!needsAuth) {
     const intlResponse = intlMiddleware(request);
